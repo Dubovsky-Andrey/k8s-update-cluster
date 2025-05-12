@@ -22,21 +22,29 @@ jobs:
       - name: Install kubectl, jq, yq
         run: |
           # ---------- jq ----------
-          sudo apt-get update
+          sudo apt-get update -y
           sudo apt-get install -y jq
 
           # ---------- yq ----------
-          YQ_VER="v4.44.1"                    # актуальный релиз
-          curl -L "https://github.com/mikefarah/yq/releases/download/${YQ_VER}/yq_linux_amd64" \
-            -o /usr/local/bin/yq
-          sudo chmod +x /usr/local/bin/yq
-          yq --version                        # sanity-check
+          YQ_VER="v4.44.1"
+          ARCH=$(uname -m)          # x86_64 или aarch64
+          case $ARCH in
+            x86_64)  YQ_ARCH="amd64" ;;
+            aarch64) YQ_ARCH="arm64" ;;
+            arm64)   YQ_ARCH="arm64" ;;
+            *) echo "Unsupported arch: $ARCH"; exit 1 ;;
+          esac
+
+          curl -L "https://github.com/mikefarah/yq/releases/download/${YQ_VER}/yq_linux_${YQ_ARCH}" \
+            -o /tmp/yq
+          sudo install -m 0755 /tmp/yq /usr/local/bin/yq
+          yq --version               # sanity-check
 
           # ---------- kubectl ----------
           K_VER=$(curl -sSL https://dl.k8s.io/release/stable.txt)
-          curl -sSL "https://dl.k8s.io/release/${K_VER}/bin/linux/amd64/kubectl" -o kubectl
-          chmod +x kubectl
-          sudo mv kubectl /usr/local/bin/
+          curl -sSL "https://dl.k8s.io/release/${K_VER}/bin/linux/${YQ_ARCH}/kubectl" \
+            -o /tmp/kubectl
+          sudo install -m 0755 /tmp/kubectl /usr/local/bin/kubectl
 
       # ───────────── read desired version ─────────────
       - id: cfg
