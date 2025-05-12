@@ -19,11 +19,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install tooling (kubectl, jq, yq)
+      - name: Install kubectl, jq, yq
         run: |
-          sudo apt-get update && sudo apt-get install -y jq yq
-          curl -sSL "https://dl.k8s.io/release/$(curl -sSL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o kubectl
-          chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+          # ---------- jq ----------
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+          # ---------- yq ----------
+          YQ_VER="v4.44.1"                    # актуальный релиз
+          curl -L "https://github.com/mikefarah/yq/releases/download/${YQ_VER}/yq_linux_amd64" \
+            -o /usr/local/bin/yq
+          sudo chmod +x /usr/local/bin/yq
+          yq --version                        # sanity-check
+
+          # ---------- kubectl ----------
+          K_VER=$(curl -sSL https://dl.k8s.io/release/stable.txt)
+          curl -sSL "https://dl.k8s.io/release/${K_VER}/bin/linux/amd64/kubectl" -o kubectl
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
 
       # ───────────── read desired version ─────────────
       - id: cfg
