@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   check-upgrade:
-    runs-on: [self-hosted]
+    runs-on: [self-hosted-arm]
     env:
       KUBECONFIG: ${{ secrets.KUBECONFIG }}
 
