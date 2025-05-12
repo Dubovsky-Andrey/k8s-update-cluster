@@ -50,8 +50,8 @@ jobs:
       - id: cfg
         name: Load desired version and selector
         run: |
-          DESIRED=$(yq '.desiredVersion' config/k8s-upgrade-config.yaml)
-          SELECTOR=$(yq -r '.labelSelector // ""' config/k8s-upgrade-config.yaml)
+          DESIRED=$(yq '.desiredVersion' k8s-upgrade-config.yaml)
+          SELECTOR=$(yq -r '.labelSelector // ""' k8s-upgrade-config.yaml)
           echo "desired=$DESIRED"   >> "$GITHUB_OUTPUT"
           echo "selector=$SELECTOR" >> "$GITHUB_OUTPUT"
 
