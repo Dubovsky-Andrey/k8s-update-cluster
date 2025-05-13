@@ -173,6 +173,25 @@ jobs:
 
           echo "✅ etcdctl v${ETCD_VER} installed on runner"
 
+      - name: Fetch latest etcd snapshot from control-plane
+        shell: bash
+        run: |
+          SSH_USER="${{ secrets.SSH_USER }}"
+          PRIMARY=$(kubectl get nodes \
+            -l node-role.kubernetes.io/control-plane \
+            -o jsonpath='{.items[0].metadata.name}')
+
+          # 1) Находим файл на ноде
+          REMOTE_SNAPSHOT=$(ssh -o StrictHostKeyChecking=no "$SSH_USER@$PRIMARY" \
+            "ls /tmp/etcd-snapshot-*.db | tail -n1")
+          echo "→ Remote snapshot: $REMOTE_SNAPSHOT"
+
+          # 2) Скачиваем его через sudo cat (обход прав)
+          LOCAL_FILE=$(basename "$REMOTE_SNAPSHOT")
+          ssh -o StrictHostKeyChecking=no "$SSH_USER@$PRIMARY" \
+            "sudo cat $REMOTE_SNAPSHOT" > "$LOCAL_FILE"
+          echo "✅ Snapshot downloaded to runner as $LOCAL_FILE"
+
       - name: Verify snapshot locally
         shell: bash
         run: |
