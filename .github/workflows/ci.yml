@@ -174,7 +174,7 @@ jobs:
           echo " Snapshot verification passed"
 
       - name: Upload etcd snapshot artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: etcd-snapshot
           path: etcd-snapshot-*.db
