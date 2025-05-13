@@ -39,6 +39,7 @@ jobs:
     runs-on: [self-hosted-arm]
 
     outputs:
+      node_list: ${{ steps.list-names.outputs.node_list }}
       need_upgrade: ${{ steps.check.outputs.need_upgrade }}
       nodes_checked: ${{ steps.list.outputs.count }}
 
@@ -95,6 +96,15 @@ jobs:
           fi
           jq -r '.items[].metadata.name' nodes.json > /tmp/nodes.lst
           echo "count=$(wc -l < /tmp/nodes.lst)" >> $GITHUB_OUTPUT
+
+      - id: list-names
+        name: Собираем имена нод в строку
+        run: |
+          # Читаем из /tmp/nodes.lst и делаем из них одну строку через пробел
+          NODE_LIST=$(paste -sd' ' /tmp/nodes.lst)
+          echo "→ Nodes: $NODE_LIST"
+          # Пробрасываем в step-output
+          echo "node_list=$NODE_LIST" >> $GITHUB_OUTPUT
 
       - id: check
         name: Compare kubelet versions
@@ -288,12 +298,12 @@ jobs:
           chmod 600 $HOME/kubeconfig
           echo "KUBECONFIG=$HOME/kubeconfig" >> $GITHUB_ENV
 
-      - name: Load node list
-        id: load-nodes
+      - name: Upgrade each node one by one
+        shell: bash
         run: |
-          NODES=$(yq -r '.nodes[]' k8s-upgrade-config.yaml)
-          echo "Nodes = $NODES"
-          echo "nodes=$NODES" >> "$GITHUB_OUTPUT"
+          # Получаем строку имён из предыдущего job-а
+          NODE_LIST="${{ needs.check-upgrade.outputs.node_list }}"
+          echo "→ Nodes to upgrade: $NODE_LIST"
 
   #     - name: Upgrade each node one by one
   #       run: |
