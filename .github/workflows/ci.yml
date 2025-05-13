@@ -93,3 +93,140 @@ jobs:
           else
             echo "-  All nodes on version ${{ steps.cfg.outputs.desired }}" >> $GITHUB_STEP_SUMMARY
           fi
+  backup-etcd:
+    name: Backup etcd Snapshot
+    runs-on: [self-hosted-arm]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y jq
+          YQ_VER="v4.44.1"
+          ARCH=$(uname -m)
+          case "$ARCH" in
+            x86_64)
+              YQ_ARCH="amd64"
+              ;;
+            aarch64|arm64)
+              YQ_ARCH="arm64"
+              ;;
+            *)
+              echo "Error: Unsupported architecture: $ARCH" >&2
+              exit 1
+              ;;
+          esac
+          curl -L "https://github.com/mikefarah/yq/releases/download/${YQ_VER}/yq_linux_${YQ_ARCH}" -o /tmp/yq
+          sudo install -m 0755 /tmp/yq /usr/local/bin/yq
+          K_VER=$(curl -sSL https://dl.k8s.io/release/stable.txt)
+          curl -sSL "https://dl.k8s.io/release/${K_VER}/bin/linux/${YQ_ARCH}/kubectl" -o /tmp/kubectl
+          sudo install -m 0755 /tmp/kubectl /usr/local/bin/kubectl
+
+      - name: Restore admin kubeconfig
+        run: |
+          echo "${{ secrets.ADMIN_KUBECONFIG_B64 }}" | base64 -d > $HOME/kubeconfig
+          chmod 600 $HOME/kubeconfig
+          echo "KUBECONFIG=$HOME/kubeconfig" >> $GITHUB_ENV
+
+      - name: Snapshot etcd on primary control-plane
+        run: |
+          PRIMARY=$(yq -r '.nodes[0]' config/k8s-upgrade-config.yaml)
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@$PRIMARY << 'EOF'
+            sudo kubeadm etcd snapshot save /tmp/etcd-snapshot-$(date +'%Y%m%d%H%M%S').db
+          EOF
+      - name: Download etcd snapshot
+        run: |
+          PRIMARY=$(yq -r '.nodes[0]' config/k8s-upgrade-config.yaml)
+          scp ${{ secrets.SSH_USER }}@$PRIMARY:/tmp/etcd-snapshot-*.db .
+
+      - name: Verify etcd snapshot
+        run: |
+          # 1) Найти файл
+          SNAPSHOT=$(ls etcd-snapshot-*.db | head -n1) || { echo " Snapshot not found"; exit 1; }
+
+          # 2) Проверить размер
+          SIZE=$(stat -c%s "$SNAPSHOT")
+          echo " Snapshot size: $SIZE bytes"
+          if [ "$SIZE" -lt 1024 ]; then
+            echo " Snapshot too small (<1 KB)" >&2
+            exit 1
+          fi
+
+          # 3) Проверить метаданные через etcdctl
+          etcdctl --write-out=table snapshot status "$SNAPSHOT" || {
+            echo " etcdctl snapshot status failed" >&2
+            exit 1
+          }
+
+          # 4) Попробовать восстановить в test-dir
+          rm -rf /tmp/etcd-test && mkdir -p /tmp/etcd-test
+          etcdctl snapshot restore "$SNAPSHOT" \
+            --data-dir /tmp/etcd-test \
+            --name test-etcd \
+            --initial-cluster test-etcd=http://localhost:2380 \
+            --initial-cluster-token test-token \
+            --initial-advertise-peer-urls http://localhost:2380 || {
+            echo " Snapshot restore failed" >&2
+            exit 1
+          }
+          echo " Snapshot verification passed"
+
+      - name: Upload etcd snapshot artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: etcd-snapshot
+          path: etcd-snapshot-*.db
+
+  # upgrade-nodes:
+  #   name: Upgrade Kubernetes Nodes
+  #   needs:
+  #     - check-upgrade
+  #     - backup-etcd
+  #   if: needs.check-upgrade.outputs.need_upgrade == '1'
+  #   runs-on: [self-hosted-arm]
+
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
+
+  #     - name: Install dependencies
+  #       run: |
+  #         sudo apt-get update -y
+  #         sudo apt-get install -y jq
+  #         YQ_VER="v4.44.1"
+  #         ARCH=$(uname -m)
+  #         if [ "$ARCH" = "x86_64" ]; then YQ_ARCH="amd64"; else YQ_ARCH="arm64"; fi
+  #         curl -L "https://github.com/mikefarah/yq/releases/download/${YQ_VER}/yq_linux_${YQ_ARCH}" -o /tmp/yq
+  #         sudo install -m 0755 /tmp/yq /usr/local/bin/yq
+  #         K_VER=$(curl -sSL https://dl.k8s.io/release/stable.txt)
+  #         curl -sSL "https://dl.k8s.io/release/${K_VER}/bin/linux/${YQ_ARCH}/kubectl" -o /tmp/kubectl
+  #         sudo install -m 0755 /tmp/kubectl /usr/local/bin/kubectl
+
+  #     - name: Restore admin kubeconfig
+  #       run: |
+  #         echo "${{ secrets.ADMIN_KUBECONFIG_B64 }}" | base64 -d > $HOME/kubeconfig
+  #         chmod 600 $HOME/kubeconfig
+  #         echo "KUBECONFIG=$HOME/kubeconfig" >> $GITHUB_ENV
+
+  #     - name: Load node list
+  #       id: load-nodes
+  #       run: |
+  #         NODES=$(yq -r '.nodes[]' config/k8s-upgrade-config.yaml)
+  #         echo "nodes=$NODES" >> "$GITHUB_OUTPUT"
+
+  #     - name: Upgrade each node one by one
+  #       run: |
+  #         set -euo pipefail
+  #         for NODE in ${{ steps.load-nodes.outputs.nodes }}; do
+  #           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@$NODE << 'EOF'
+  #             sudo kubectl drain $NODE --ignore-daemonsets --delete-emptydir-data
+  #             sudo apt-get update -y
+  #             sudo apt-get install -y kubeadm=${{ needs.check-upgrade.outputs.desired }}-00
+  #             sudo kubeadm upgrade node
+  #             sudo apt-get install -y kubelet=${{ needs.check-upgrade.outputs.desired }}-00 kubectl=${{ needs.check-upgrade.outputs.desired }}-00
+  #             sudo systemctl restart kubelet
+  #             sudo kubectl uncordon $NODE
+  #           EOF
+  #         done
