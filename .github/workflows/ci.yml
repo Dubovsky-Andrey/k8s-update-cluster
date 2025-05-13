@@ -138,23 +138,36 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-      - name: Create etcd snapshot on control-plane
+      - name: Backup etcd snapshot (no here-doc)
         shell: bash
         run: |
           SSH_USER="${{ secrets.SSH_USER }}"
           PRIMARY=$(kubectl get nodes \
             -l node-role.kubernetes.io/control-plane \
             -o jsonpath='{.items[0].metadata.name}')
-          REMOTE_PATH="/tmp/etcd-snapshot-$(date +'%Y%m%d%H%M%S').db"
+          TIMESTAMP=$(date +'%Y%m%d%H%M%S')
+          REMOTE_SNAPSHOT="/tmp/etcd-snapshot-${TIMESTAMP}.db"
 
-          echo "→ Snapshot on $PRIMARY → $REMOTE_PATH"
+          # sanity
+          if [[ -z "$SSH_USER" ]]; then
+            echo "❌ SSH_USER not set" >&2; exit 1
+          fi
+          if [[ -z "$PRIMARY" ]]; then
+            echo "❌ control-plane node not found" >&2; exit 1
+          fi
+
+          echo "→ Creating snapshot on $PRIMARY"
           ssh -o StrictHostKeyChecking=no "$SSH_USER@$PRIMARY" \
             "sudo apt-get update && \
              sudo apt-get install -y etcd-client && \
-             ETCDCTL_API=3 etcdctl snapshot save $REMOTE_PATH && \
-             ETCDCTL_API=3 etcdctl snapshot status $REMOTE_PATH"
+             export ETCDCTL_API=3 && \
+             etcdctl snapshot save --concurrency=1 $REMOTE_SNAPSHOT"
 
-          echo "::set-output name=remote_path::$REMOTE_PATH"
+          echo "→ Downloading snapshot to runner"
+          scp -o StrictHostKeyChecking=no \
+            "$SSH_USER@$PRIMARY:$REMOTE_SNAPSHOT" .
+
+          echo "✅ Fetched $(basename $REMOTE_SNAPSHOT)"
 
       - name: Download etcd snapshot
         shell: bash
