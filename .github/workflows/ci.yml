@@ -133,25 +133,19 @@ jobs:
       - name: Snapshot etcd on primary control-plane
         shell: bash
         run: |
-          # Получаем список control-plane нод по лейблу (если у вас есть соответствующий лейбл)
+          # найдём control-plane ноду (либо просто первую)
           PRIMARY=$(kubectl get nodes \
             -l node-role.kubernetes.io/control-plane \
             -o jsonpath='{.items[0].metadata.name}')
-
-          # Если у вас нет лейблов, можно взять просто первую ноду в кластере:
-          # PRIMARY=$(kubectl get nodes -o jsonpath='{.items[0].metadata.name}')
-
           echo "→ Primary node: $PRIMARY"
           if [[ -z "$PRIMARY" ]]; then
-            echo "❌ Не удалось найти ни одной ноды через kubectl"
+            echo "❌ Ни одной ноды не найдено"
             exit 1
           fi
 
+          # делаем снапшот: экранируем $, чтобы date выполнился удалённо
           ssh -o StrictHostKeyChecking=no "${{ secrets.SSH_USER }}@$PRIMARY" \
-            "sudo kubeadm etcd snapshot save /tmp/etcd-snapshot-$(date +'%Y%m%d%H%M%S').db"
-
-          ssh -o StrictHostKeyChecking=no "${{ secrets.SSH_USER }}@$PRIMARY" \
-            "sudo kubeadm etcd snapshot save /tmp/etcd-snapshot-$(date +'%Y%m%d%H%M%S').db"
+            "sudo kubeadm etcd snapshot save /tmp/etcd-snapshot-\$(date +'%Y%m%d%H%M%S').db"
 
       - name: Download etcd snapshot
         run: |
