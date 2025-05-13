@@ -158,9 +158,13 @@ jobs:
             exit 1
           fi
 
-          # 3) Делаем снапшот командой в одну строку — никаких here-doc’ов
           ssh -o StrictHostKeyChecking=no "$SSH_USER@$PRIMARY" \
-            "sudo kubeadm etcd snapshot save /tmp/etcd-snapshot-$(date +'%Y%m%d%H%M%S').db"
+            "export ETCDCTL_API=3 && \
+             ETCDCTL_ENDPOINTS=https://127.0.0.1:2379 && \
+             ETCDCTL_CACERT=/etc/kubernetes/pki/etcd/ca.crt && \
+             ETCDCTL_CERT=/etc/kubernetes/pki/etcd/server.crt && \
+             ETCDCTL_KEY=/etc/kubernetes/pki/etcd/server.key && \
+             etcdctl snapshot save /tmp/etcd-snapshot-$(date +'%Y%m%d%H%M%S').db"
 
       - name: Download etcd snapshot
         run: |
