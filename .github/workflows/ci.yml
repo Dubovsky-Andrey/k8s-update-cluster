@@ -148,20 +148,27 @@ jobs:
           TIMESTAMP=$(date +'%Y%m%d%H%M%S')
           REMOTE_SNAPSHOT="/tmp/etcd-snapshot-${TIMESTAMP}.db"
 
-          # sanity
+          # sanity checks
           if [[ -z "$SSH_USER" ]]; then
-            echo " SSH_USER not set" >&2; exit 1
+            echo " SSH_USER not set" >&2
+            exit 1
           fi
           if [[ -z "$PRIMARY" ]]; then
-            echo " control-plane node not found" >&2; exit 1
+            echo " control-plane node not found" >&2
+            exit 1
           fi
 
           echo "→ Creating snapshot on $PRIMARY"
           ssh -o StrictHostKeyChecking=no "$SSH_USER@$PRIMARY" \
             "sudo apt-get update && \
              sudo apt-get install -y etcd-client && \
-             export ETCDCTL_API=3 && \
-             etcdctl snapshot save --concurrency=1 $REMOTE_SNAPSHOT"
+             sudo sh -lc '\
+               ETCDCTL_API=3 \
+               ETCDCTL_ENDPOINTS=https://127.0.0.1:2379 \
+               ETCDCTL_CACERT=/etc/kubernetes/pki/etcd/ca.crt \
+               ETCDCTL_CERT=/etc/kubernetes/pki/etcd/server.crt \
+               ETCDCTL_KEY=/etc/kubernetes/pki/etcd/server.key \
+               etcdctl snapshot save $REMOTE_SNAPSHOT'"
 
           echo "→ Downloading snapshot to runner"
           scp -o StrictHostKeyChecking=no \
