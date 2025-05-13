@@ -150,10 +150,10 @@ jobs:
 
           # sanity
           if [[ -z "$SSH_USER" ]]; then
-            echo "❌ SSH_USER not set" >&2; exit 1
+            echo " SSH_USER not set" >&2; exit 1
           fi
           if [[ -z "$PRIMARY" ]]; then
-            echo "❌ control-plane node not found" >&2; exit 1
+            echo " control-plane node not found" >&2; exit 1
           fi
 
           echo "→ Creating snapshot on $PRIMARY"
@@ -167,7 +167,7 @@ jobs:
           scp -o StrictHostKeyChecking=no \
             "$SSH_USER@$PRIMARY:$REMOTE_SNAPSHOT" .
 
-          echo "✅ Fetched $(basename $REMOTE_SNAPSHOT)"
+          echo " Fetched $(basename $REMOTE_SNAPSHOT)"
 
       - name: Download etcd snapshot
         shell: bash
