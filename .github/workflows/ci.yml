@@ -103,7 +103,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y jq
+          sudo apt-get install -y jq etcd-client
           YQ_VER="v4.44.1"
           ARCH=$(uname -m)
           case "$ARCH" in
@@ -173,12 +173,6 @@ jobs:
             > etcd-snapshot-${TIMESTAMP}.db
 
           echo " Snapshot downloaded: etcd-snapshot-${TIMESTAMP}.db"
-
-      - name: Install etcdctl on runner
-        shell: bash
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y etcd-client
 
       - name: Verify etcd snapshot
         run: |
