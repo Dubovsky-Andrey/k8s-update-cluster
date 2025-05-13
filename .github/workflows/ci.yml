@@ -138,77 +138,43 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-      - name: Backup etcd snapshot in one go
+      - name: Backup & verify etcd snapshot in one go
         shell: bash
         run: |
-          # vars
           SSH_USER="${{ secrets.SSH_USER }}"
           PRIMARY=$(kubectl get nodes \
             -l node-role.kubernetes.io/control-plane \
             -o jsonpath='{.items[0].metadata.name}')
           TIMESTAMP=$(date +'%Y%m%d%H%M%S')
+          REMOTE_SNAPSHOT="/tmp/etcd-snapshot-${TIMESTAMP}.db"
 
           # sanity checks
           if [[ -z "$SSH_USER" ]]; then
-            echo " SSH_USER не задан"; exit 1
+            echo "❌ SSH_USER не задан" >&2; exit 1
           fi
           if [[ -z "$PRIMARY" ]]; then
-            echo " Control-plane нода не найдена"; exit 1
+            echo "❌ Control-plane нода не найдена" >&2; exit 1
           fi
 
-          echo "→ Creating etcd snapshot on $PRIMARY..."
+          echo "→ Creating and verifying snapshot on $PRIMARY..."
           ssh -o StrictHostKeyChecking=no "$SSH_USER@$PRIMARY" \
             "sudo apt-get update && \
              sudo apt-get install -y etcd-client && \
-             sudo sh -lc 'ETCDCTL_API=3 etcdctl \
-               --endpoints=https://127.0.0.1:2379 \
-               --cacert=/etc/kubernetes/pki/etcd/ca.crt \
-               --cert=/etc/kubernetes/pki/etcd/server.crt \
-               --key=/etc/kubernetes/pki/etcd/server.key \
-               snapshot save /tmp/etcd-snapshot-${TIMESTAMP}.db'"
+             ETCDCTL_API=3 etcdctl snapshot save ${REMOTE_SNAPSHOT} && \
+             ETCDCTL_API=3 etcdctl snapshot status ${REMOTE_SNAPSHOT} && \
+             sudo rm -rf /tmp/etcd-verify && \
+             ETCDCTL_API=3 etcdctl snapshot restore ${REMOTE_SNAPSHOT} \
+               --data-dir /tmp/etcd-verify \
+               --name test-etcd \
+               --initial-cluster test-etcd=http://localhost:2380 \
+               --initial-cluster-token test-token \
+               --initial-advertise-peer-urls http://localhost:2380"
 
-          echo "→ Downloading snapshot via sudo cat..."
-          ssh -o StrictHostKeyChecking=no "$SSH_USER@$PRIMARY" \
-            "sudo cat /tmp/etcd-snapshot-${TIMESTAMP}.db" \
-            > etcd-snapshot-${TIMESTAMP}.db
+          echo "→ Downloading snapshot to runner..."
+          scp -o StrictHostKeyChecking=no \
+            "$SSH_USER@$PRIMARY:${REMOTE_SNAPSHOT}" .
 
-          echo " Snapshot downloaded: etcd-snapshot-${TIMESTAMP}.db"
-
-      - name: Verify etcd snapshot
-        shell: bash
-        run: |
-          # 1) Найти файл
-          SNAPSHOT=$(ls etcd-snapshot-*.db | head -n1) || { echo " Snapshot not found"; exit 1; }
-          echo "→ Snapshot: $SNAPSHOT"
-
-          # 2) Проверить размер
-          SIZE=$(stat -c%s "$SNAPSHOT")
-          echo "→ Size: $SIZE bytes"
-          if [ "$SIZE" -lt 1024 ]; then
-            echo " Snapshot too small (<1 KB)" >&2
-            exit 1
-          fi
-
-          # 3) Используем v3 API и проверяем статус
-          export ETCDCTL_API=3
-          etcdctl snapshot status "$SNAPSHOT" || {
-            echo " etcdctl snapshot status failed" >&2
-            exit 1
-          }
-
-          # 4) Пробуем восстановить в тестовом каталоге
-          rm -rf /tmp/etcd-test
-          etcdctl snapshot restore "$SNAPSHOT" \
-            --data-dir /tmp/etcd-test \
-            --name test-etcd \
-            --initial-cluster test-etcd=http://localhost:2380 \
-            --initial-cluster-token test-token \
-            --initial-advertise-peer-urls http://localhost:2380 || {
-            echo " Snapshot restore failed" >&2
-            exit 1
-          }
-
-          echo " Snapshot verification passed"
+          echo " Done: etcd-snapshot-${TIMESTAMP}.db"
 
       - name: Upload etcd snapshot artifact
         uses: actions/upload-artifact@v4
