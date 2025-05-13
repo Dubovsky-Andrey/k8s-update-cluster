@@ -38,6 +38,10 @@ jobs:
   check-upgrade:
     runs-on: [self-hosted-arm]
 
+    outputs:
+      need_upgrade: ${{ steps.check.outputs.need_upgrade }}
+      nodes_checked: ${{ steps.list.outputs.count }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -80,8 +84,8 @@ jobs:
           echo "desired=$DESIRED" >> "$GITHUB_OUTPUT"
           echo "selector=$SELECTOR" >> "$GITHUB_OUTPUT"
 
-      - name: Get list of nodes
-        id: list
+      - id: list
+        name: Get list of nodes
         run: |
           SEL="${{ steps.cfg.outputs.selector }}"
           if [ -n "$SEL" ]; then
@@ -90,10 +94,10 @@ jobs:
             kubectl get nodes -o json > nodes.json
           fi
           jq -r '.items[].metadata.name' nodes.json > /tmp/nodes.lst
-          echo "count=$(wc -l < /tmp/nodes.lst)" >> "$GITHUB_OUTPUT"
+          echo "count=$(wc -l < /tmp/nodes.lst)" >> $GITHUB_OUTPUT
 
-      - name: Compare kubelet versions
-        id: check
+      - id: check
+        name: Compare kubelet versions
         run: |
           DESIRED="${{ steps.cfg.outputs.desired }}"
           NEED=0
@@ -105,7 +109,7 @@ jobs:
               NEED=1
             fi
           done < /tmp/nodes.lst
-          echo "need_upgrade=$NEED" >> "$GITHUB_OUTPUT"
+          echo "need_upgrade=$NEED" >> $GITHUB_OUTPUT
 
       - name: Write summary
         if: always()
