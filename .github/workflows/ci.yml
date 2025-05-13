@@ -18,18 +18,15 @@ jobs:
       image: alpine:latest
 
     steps:
+      - name: Install curl and CA certificates
+        run: |
+          apk add --no-cache curl ca-certificates
+
       - name: Fetch latest Kubernetes stable release
         id: fetch_k8s
         run: |
           LATEST=$(curl -fsSL https://dl.k8s.io/release/stable.txt)
           echo "k8s_latest=$LATEST" >> $GITHUB_OUTPUT
-
-      - name: Determine current cluster version
-        id: fetch_cluster
-        run: |
-          # требуется доступ kubectl к вашему кластеру
-          CLUSTER=$(kubectl version --short | awk '/Server Version/ {print $3}')
-          echo "cluster=$CLUSTER" >> $GITHUB_OUTPUT
 
       - name: Write version summary
         if: always()
