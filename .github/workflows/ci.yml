@@ -11,6 +11,22 @@ permissions:
   contents: read
 
 jobs:
+  check-k8s-version:
+    name: Check latest Kubernetes version
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Fetch latest Kubernetes stable release
+        id: fetch_k8s
+        run: |
+          LATEST=$(curl -fsSL https://dl.k8s.io/release/stable.txt)
+          echo "→ Latest Kubernetes stable release is $LATEST"
+          echo "k8s_latest=$LATEST" >> $GITHUB_OUTPUT
+
+      - name: Show the version
+        run: |
+          echo "Current stable Kubernetes version: ${{ steps.fetch_k8s.outputs.k8s_latest }}"
+
   check-upgrade:
     runs-on: [self-hosted-arm]
 
