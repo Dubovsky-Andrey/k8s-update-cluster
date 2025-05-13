@@ -138,42 +138,42 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-      - name: Snapshot etcd on primary control-plane
+      - name: Backup etcd snapshot in one go
         shell: bash
         run: |
-          # 1) Проверяем SSH_USER
+          # 1) Переменные
           SSH_USER="${{ secrets.SSH_USER }}"
-          if [[ -z "$SSH_USER" ]]; then
-            echo " Ошибка: секрет SSH_USER пуст или не задан"
-            exit 1
-          fi
-
-          # 2) Берём первую control-plane ноду
           PRIMARY=$(kubectl get nodes \
             -l node-role.kubernetes.io/control-plane \
             -o jsonpath='{.items[0].metadata.name}')
-          echo "→ Primary node: $PRIMARY"
+          TIMESTAMP=$(date +'%Y%m%d%H%M%S')
+
+          # 2) Проверки
+          if [[ -z "$SSH_USER" ]]; then
+            echo "❌ SSH_USER не задан"
+            exit 1
+          fi
           if [[ -z "$PRIMARY" ]]; then
-            echo " Control-plane нода не найдена"
+            echo "❌ Control-plane нода не найдена"
             exit 1
           fi
 
-          # 2) Через SSH ставим etcd-client и делаем снапшот от имени root
+          echo "→ Creating etcd snapshot on $PRIMARY..."
           ssh -o StrictHostKeyChecking=no "$SSH_USER@$PRIMARY" \
             "sudo apt-get update && \
              sudo apt-get install -y etcd-client && \
-             sudo bash -lc '\
-               export ETCDCTL_API=3 && \
-               etcdctl --endpoints=https://127.0.0.1:2379 \
-                 --cacert=/etc/kubernetes/pki/etcd/ca.crt \
-                 --cert=/etc/kubernetes/pki/etcd/server.crt \
-                 --key=/etc/kubernetes/pki/etcd/server.key \
-                 snapshot save /tmp/etcd-snapshot-\$(date +%Y%m%d%H%M%S).db'"
+             export ETCDCTL_API=3 && \
+             etcdctl --endpoints=https://127.0.0.1:2379 \
+               --cacert=/etc/kubernetes/pki/etcd/ca.crt \
+               --cert=/etc/kubernetes/pki/etcd/server.crt \
+               --key=/etc/kubernetes/pki/etcd/server.key \
+               snapshot save /tmp/etcd-snapshot-${TIMESTAMP}.db"
 
-      - name: Download etcd snapshot
-        run: |
-          PRIMARY=$(yq -r '.nodes[0]' k8s-upgrade-config.yaml)
-          scp ${{ secrets.SSH_USER }}@$PRIMARY:/tmp/etcd-snapshot-*.db .
+          echo "→ Downloading snapshot to runner..."
+          scp -o StrictHostKeyChecking=no \
+            "$SSH_USER@$PRIMARY":/tmp/etcd-snapshot-${TIMESTAMP}.db .
+
+          echo " Snapshot etcd-snapshot-${TIMESTAMP}.db downloaded"
 
       - name: Verify etcd snapshot
         run: |
