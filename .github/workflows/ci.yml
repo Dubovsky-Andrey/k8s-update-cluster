@@ -138,17 +138,19 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-      - name: Backup etcd snapshot (no here-doc)
+      - name: Backup etcd snapshot (no here-doc, sudo cat)
         shell: bash
         run: |
+          # 1) Переменные
           SSH_USER="${{ secrets.SSH_USER }}"
           PRIMARY=$(kubectl get nodes \
             -l node-role.kubernetes.io/control-plane \
             -o jsonpath='{.items[0].metadata.name}')
           TIMESTAMP=$(date +'%Y%m%d%H%M%S')
           REMOTE_SNAPSHOT="/tmp/etcd-snapshot-${TIMESTAMP}.db"
+          LOCAL_FILE="etcd-snapshot-${TIMESTAMP}.db"
 
-          # sanity checks
+          # 2) Sanity checks
           if [[ -z "$SSH_USER" ]]; then
             echo " SSH_USER not set" >&2
             exit 1
@@ -158,10 +160,10 @@ jobs:
             exit 1
           fi
 
+          # 3) Создаём снапшот на удалённой ноде
           echo "→ Creating snapshot on $PRIMARY"
           ssh -o StrictHostKeyChecking=no "$SSH_USER@$PRIMARY" \
-            "sudo apt-get update && \
-             sudo apt-get install -y etcd-client && \
+            "sudo apt-get update && sudo apt-get install -y etcd-client && \
              sudo sh -lc '\
                ETCDCTL_API=3 \
                ETCDCTL_ENDPOINTS=https://127.0.0.1:2379 \
@@ -170,24 +172,14 @@ jobs:
                ETCDCTL_KEY=/etc/kubernetes/pki/etcd/server.key \
                etcdctl snapshot save $REMOTE_SNAPSHOT'"
 
-          echo "→ Downloading snapshot via sudo cat"
+          echo "→ Snapshot saved at $REMOTE_SNAPSHOT"
+
+          # 4) Загружаем файл через sudo cat (обход прав)
+          echo "→ Downloading snapshot via sudo cat to $LOCAL_FILE"
           ssh -o StrictHostKeyChecking=no "$SSH_USER@$PRIMARY" \
             "sudo cat $REMOTE_SNAPSHOT" > "$LOCAL_FILE"
 
-          echo " Snapshot saved locally as $LOCAL_FILE"
-
-      - name: Download etcd snapshot
-        shell: bash
-        run: |
-          SSH_USER="${{ secrets.SSH_USER }}"
-          PRIMARY=$(kubectl get nodes \
-            -l node-role.kubernetes.io/control-plane \
-            -o jsonpath='{.items[0].metadata.name}')
-          REMOTE_PATH="${{ steps.create_etcd_snapshot.outputs.remote_path }}"
-
-          echo "→ Fetching $REMOTE_PATH from $PRIMARY"
-          scp -o StrictHostKeyChecking=no \
-            "$SSH_USER@$PRIMARY:$REMOTE_PATH" .
+          echo " Snapshot local file: $LOCAL_FILE"
 
       - name: Verify snapshot locally
         shell: bash
