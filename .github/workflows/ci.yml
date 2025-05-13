@@ -122,6 +122,7 @@ jobs:
           else
             echo "-  All nodes on version ${{ steps.cfg.outputs.desired }}" >> $GITHUB_STEP_SUMMARY
           fi
+
   backup-etcd:
     name: Backup etcd Snapshot
     runs-on: [self-hosted-arm]
@@ -279,6 +280,7 @@ jobs:
           curl -sSL "https://dl.k8s.io/release/${K_VER}/bin/linux/${YQ_ARCH}/kubectl" -o /tmp/kubectl
           sudo install -m 0755 /tmp/kubectl /usr/local/bin/kubectl
           kubectl version
+          echo "-  Upgrade needed to ${{ steps.cfg.outputs.desired }}" >> $GITHUB_STEP_SUMMARY
 
       - name: Restore admin kubeconfig
         run: |
@@ -290,6 +292,7 @@ jobs:
         id: load-nodes
         run: |
           NODES=$(yq -r '.nodes[]' k8s-upgrade-config.yaml)
+          echo "Nodes = $NODES"
           echo "nodes=$NODES" >> "$GITHUB_OUTPUT"
 
   #     - name: Upgrade each node one by one
