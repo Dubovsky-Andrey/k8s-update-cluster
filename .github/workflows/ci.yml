@@ -113,6 +113,7 @@ jobs:
           echo "### Kubernetes upgrade report" >> $GITHUB_STEP_SUMMARY
           echo "- Nodes checked: ${{ steps.list.outputs.count }}" >> $GITHUB_STEP_SUMMARY
           if [ "${{ steps.check.outputs.need_upgrade }}" = "1" ]; then
+            echo "-  Upgrade needed = True" >> $GITHUB_STEP_SUMMARY
             echo "-  Upgrade needed to ${{ steps.cfg.outputs.desired }}" >> $GITHUB_STEP_SUMMARY
           else
             echo "-  All nodes on version ${{ steps.cfg.outputs.desired }}" >> $GITHUB_STEP_SUMMARY
