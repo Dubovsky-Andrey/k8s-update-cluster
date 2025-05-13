@@ -225,30 +225,31 @@ jobs:
           name: etcd-snapshot
           path: etcd-snapshot-*.db
 
-  # upgrade-nodes:
-  #   name: Upgrade Kubernetes Nodes
-  #   needs:
-  #     - check-upgrade
-  #     - backup-etcd
-  #   if: needs.check-upgrade.outputs.need_upgrade == '1'
-  #   runs-on: [self-hosted-arm]
+  upgrade-nodes:
+    name: Upgrade Kubernetes Nodes
+    needs:
+      - check-upgrade
+      - backup-etcd
+    if: needs.check-upgrade.outputs.need_upgrade == '1'
+    runs-on: [self-hosted-arm]
 
-  #   steps:
-  #     - name: Checkout repository
-  #       uses: actions/checkout@v4
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-  #     - name: Install dependencies
-  #       run: |
-  #         sudo apt-get update -y
-  #         sudo apt-get install -y jq
-  #         YQ_VER="v4.44.1"
-  #         ARCH=$(uname -m)
-  #         if [ "$ARCH" = "x86_64" ]; then YQ_ARCH="amd64"; else YQ_ARCH="arm64"; fi
-  #         curl -L "https://github.com/mikefarah/yq/releases/download/${YQ_VER}/yq_linux_${YQ_ARCH}" -o /tmp/yq
-  #         sudo install -m 0755 /tmp/yq /usr/local/bin/yq
-  #         K_VER=$(curl -sSL https://dl.k8s.io/release/stable.txt)
-  #         curl -sSL "https://dl.k8s.io/release/${K_VER}/bin/linux/${YQ_ARCH}/kubectl" -o /tmp/kubectl
-  #         sudo install -m 0755 /tmp/kubectl /usr/local/bin/kubectl
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y jq
+          YQ_VER="v4.44.1"
+          ARCH=$(uname -m)
+          if [ "$ARCH" = "x86_64" ]; then YQ_ARCH="amd64"; else YQ_ARCH="arm64"; fi
+          curl -L "https://github.com/mikefarah/yq/releases/download/${YQ_VER}/yq_linux_${YQ_ARCH}" -o /tmp/yq
+          sudo install -m 0755 /tmp/yq /usr/local/bin/yq
+          K_VER=$(curl -sSL https://dl.k8s.io/release/stable.txt)
+          curl -sSL "https://dl.k8s.io/release/${K_VER}/bin/linux/${YQ_ARCH}/kubectl" -o /tmp/kubectl
+          sudo install -m 0755 /tmp/kubectl /usr/local/bin/kubectl
+          kubectl version
 
   #     - name: Restore admin kubeconfig
   #       run: |
