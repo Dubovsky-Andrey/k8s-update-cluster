@@ -141,33 +141,31 @@ jobs:
       - name: Backup etcd snapshot in one go
         shell: bash
         run: |
-          # 1) Переменные
+          # vars
           SSH_USER="${{ secrets.SSH_USER }}"
           PRIMARY=$(kubectl get nodes \
             -l node-role.kubernetes.io/control-plane \
             -o jsonpath='{.items[0].metadata.name}')
           TIMESTAMP=$(date +'%Y%m%d%H%M%S')
 
-          # 2) Проверки
+          # sanity checks
           if [[ -z "$SSH_USER" ]]; then
-            echo "❌ SSH_USER не задан"
-            exit 1
+            echo "❌ SSH_USER не задан"; exit 1
           fi
           if [[ -z "$PRIMARY" ]]; then
-            echo "❌ Control-plane нода не найдена"
-            exit 1
+            echo "❌ Control-plane нода не найдена"; exit 1
           fi
 
           echo "→ Creating etcd snapshot on $PRIMARY..."
           ssh -o StrictHostKeyChecking=no "$SSH_USER@$PRIMARY" \
             "sudo apt-get update && \
              sudo apt-get install -y etcd-client && \
-             export ETCDCTL_API=3 && \
-             etcdctl --endpoints=https://127.0.0.1:2379 \
+             sudo sh -lc 'ETCDCTL_API=3 etcdctl \
+               --endpoints=https://127.0.0.1:2379 \
                --cacert=/etc/kubernetes/pki/etcd/ca.crt \
                --cert=/etc/kubernetes/pki/etcd/server.crt \
                --key=/etc/kubernetes/pki/etcd/server.key \
-               snapshot save /tmp/etcd-snapshot-${TIMESTAMP}.db"
+               snapshot save /tmp/etcd-snapshot-${TIMESTAMP}.db'"
 
           echo "→ Downloading snapshot to runner..."
           scp -o StrictHostKeyChecking=no \
