@@ -138,7 +138,7 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-      - name: Backup etcd snapshot (no here-doc)
+      - name: Backup etcd data directory (tar)
         shell: bash
         run: |
           SSH_USER="${{ secrets.SSH_USER }}"
@@ -146,28 +146,25 @@ jobs:
             -l node-role.kubernetes.io/control-plane \
             -o jsonpath='{.items[0].metadata.name}')
           TIMESTAMP=$(date +'%Y%m%d%H%M%S')
-          REMOTE_SNAPSHOT="/tmp/etcd-snapshot-${TIMESTAMP}.db"
+          REMOTE_ARCHIVE="/tmp/etcd-backup-${TIMESTAMP}.tar.gz"
 
-          # sanity
+          # 1) sanity
           if [[ -z "$SSH_USER" ]]; then
-            echo "❌ SSH_USER not set" >&2; exit 1
+            echo "❌ SSH_USER отсутствует" >&2; exit 1
           fi
           if [[ -z "$PRIMARY" ]]; then
-            echo "❌ control-plane node not found" >&2; exit 1
+            echo "❌ Control-plane ноду не нашли" >&2; exit 1
           fi
 
-          echo "→ Creating snapshot on $PRIMARY"
+          echo "→ Creating tar.gz of /var/lib/etcd on $PRIMARY → $REMOTE_ARCHIVE"
           ssh -o StrictHostKeyChecking=no "$SSH_USER@$PRIMARY" \
-            "sudo apt-get update && \
-             sudo apt-get install -y etcd-client && \
-             export ETCDCTL_API=3 && \
-             etcdctl snapshot save --concurrency=1 $REMOTE_SNAPSHOT"
+            "sudo tar czf $REMOTE_ARCHIVE -C /var/lib/etcd member"
 
-          echo "→ Downloading snapshot to runner"
+          echo "→ Downloading archive to runner"
           scp -o StrictHostKeyChecking=no \
-            "$SSH_USER@$PRIMARY:$REMOTE_SNAPSHOT" .
+            "$SSH_USER@$PRIMARY:$REMOTE_ARCHIVE" .
 
-          echo "✅ Fetched $(basename $REMOTE_SNAPSHOT)"
+          echo "✅ etcd data backed up: etcd-backup-${TIMESTAMP}.tar.gz"
 
       - name: Download etcd snapshot
         shell: bash
