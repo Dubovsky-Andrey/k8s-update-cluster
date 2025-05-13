@@ -132,13 +132,13 @@ jobs:
 
       - name: Snapshot etcd on primary control-plane
         run: |
-          PRIMARY=$(yq -r '.nodes[0]' config/k8s-upgrade-config.yaml)
+          PRIMARY=$(yq -r '.nodes[0]' k8s-upgrade-config.yaml)
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@$PRIMARY << 'EOF'
             sudo kubeadm etcd snapshot save /tmp/etcd-snapshot-$(date +'%Y%m%d%H%M%S').db
           EOF
       - name: Download etcd snapshot
         run: |
-          PRIMARY=$(yq -r '.nodes[0]' config/k8s-upgrade-config.yaml)
+          PRIMARY=$(yq -r '.nodes[0]' k8s-upgrade-config.yaml)
           scp ${{ secrets.SSH_USER }}@$PRIMARY:/tmp/etcd-snapshot-*.db .
 
       - name: Verify etcd snapshot
@@ -213,7 +213,7 @@ jobs:
   #     - name: Load node list
   #       id: load-nodes
   #       run: |
-  #         NODES=$(yq -r '.nodes[]' config/k8s-upgrade-config.yaml)
+  #         NODES=$(yq -r '.nodes[]' k8s-upgrade-config.yaml)
   #         echo "nodes=$NODES" >> "$GITHUB_OUTPUT"
 
   #     - name: Upgrade each node one by one
