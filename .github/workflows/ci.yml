@@ -159,12 +159,14 @@ jobs:
           fi
 
           ssh -o StrictHostKeyChecking=no "$SSH_USER@$PRIMARY" \
-            "export ETCDCTL_API=3 && \
-             ETCDCTL_ENDPOINTS=https://127.0.0.1:2379 && \
-             ETCDCTL_CACERT=/etc/kubernetes/pki/etcd/ca.crt && \
-             ETCDCTL_CERT=/etc/kubernetes/pki/etcd/server.crt && \
-             ETCDCTL_KEY=/etc/kubernetes/pki/etcd/server.key && \
-             etcdctl snapshot save /tmp/etcd-snapshot-$(date +'%Y%m%d%H%M%S').db"
+            "sudo apt-get update && \
+             sudo apt-get install -y etcd-client && \
+             export ETCDCTL_API=3 && \
+             etcdctl --endpoints=https://127.0.0.1:2379 \
+               --cacert=/etc/kubernetes/pki/etcd/ca.crt \
+               --cert=/etc/kubernetes/pki/etcd/server.crt \
+               --key=/etc/kubernetes/pki/etcd/server.key \
+               snapshot save /tmp/etcd-snapshot-\$(date +%Y%m%d%H%M%S).db"
 
       - name: Download etcd snapshot
         run: |
