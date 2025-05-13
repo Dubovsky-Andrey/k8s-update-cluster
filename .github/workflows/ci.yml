@@ -20,18 +20,20 @@ jobs:
         id: fetch_k8s
         run: |
           LATEST=$(curl -fsSL https://dl.k8s.io/release/stable.txt)
-          echo "→ Latest Kubernetes stable release is $LATEST"
           echo "k8s_latest=$LATEST" >> $GITHUB_OUTPUT
 
-      - name: Show the version
+      - name: Determine current cluster version
+        id: fetch_cluster
         run: |
-          echo "Current stable Kubernetes version: ${{ steps.fetch_k8s.outputs.k8s_latest }}"
+          # требуется доступ kubectl к вашему кластеру
+          CLUSTER=$(kubectl version --short | awk '/Server Version/ {print $3}')
+          echo "cluster=$CLUSTER" >> $GITHUB_OUTPUT
 
       - name: Write version summary
         if: always()
         run: |
           echo "### Kubernetes version report" >> $GITHUB_STEP_SUMMARY
-          echo "- Latest stable release: ${{ steps.fetch_k8s.outputs.latest }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Latest stable release: ${{ steps.fetch_k8s.outputs.k8s_latest }}" >> $GITHUB_STEP_SUMMARY
           echo "- Current cluster Server version: ${{ steps.fetch_cluster.outputs.cluster }}" >> $GITHUB_STEP_SUMMARY
 
   check-upgrade:
@@ -174,7 +176,7 @@ jobs:
             "etcdctl version | head -n1 | awk '{print \$3}'")
           echo "→ Remote etcdctl version: $ETCD_VER"
           if [[ -z "$ETCD_VER" ]]; then
-            echo "❌ Не удалось получить версию etcdctl" >&2
+            echo " Не удалось получить версию etcdctl" >&2
             exit 1
           fi
 
