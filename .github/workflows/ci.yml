@@ -34,7 +34,6 @@ jobs:
         run: |
           echo "### Kubernetes version report" >> $GITHUB_STEP_SUMMARY
           echo "- Latest stable release: ${{ steps.fetch_k8s.outputs.k8s_latest }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Current cluster Server version: ${{ steps.fetch_cluster.outputs.cluster }}" >> $GITHUB_STEP_SUMMARY
 
   check-upgrade:
     runs-on: [self-hosted-arm]
