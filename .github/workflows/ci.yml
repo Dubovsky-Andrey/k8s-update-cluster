@@ -138,43 +138,63 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-      - name: Backup & verify etcd snapshot in one go
+      - name: Create etcd snapshot on control-plane
         shell: bash
         run: |
           SSH_USER="${{ secrets.SSH_USER }}"
           PRIMARY=$(kubectl get nodes \
             -l node-role.kubernetes.io/control-plane \
             -o jsonpath='{.items[0].metadata.name}')
-          TIMESTAMP=$(date +'%Y%m%d%H%M%S')
-          REMOTE_SNAPSHOT="/tmp/etcd-snapshot-${TIMESTAMP}.db"
+          REMOTE_PATH="/tmp/etcd-snapshot-$(date +'%Y%m%d%H%M%S').db"
 
-          # sanity checks
-          if [[ -z "$SSH_USER" ]]; then
-            echo "❌ SSH_USER не задан" >&2; exit 1
-          fi
-          if [[ -z "$PRIMARY" ]]; then
-            echo "❌ Control-plane нода не найдена" >&2; exit 1
-          fi
-
-          echo "→ Creating and verifying snapshot on $PRIMARY..."
+          echo "→ Snapshot on $PRIMARY → $REMOTE_PATH"
           ssh -o StrictHostKeyChecking=no "$SSH_USER@$PRIMARY" \
             "sudo apt-get update && \
              sudo apt-get install -y etcd-client && \
-             ETCDCTL_API=3 etcdctl snapshot save ${REMOTE_SNAPSHOT} && \
-             ETCDCTL_API=3 etcdctl snapshot status ${REMOTE_SNAPSHOT} && \
-             sudo rm -rf /tmp/etcd-verify && \
-             ETCDCTL_API=3 etcdctl snapshot restore ${REMOTE_SNAPSHOT} \
-               --data-dir /tmp/etcd-verify \
-               --name test-etcd \
-               --initial-cluster test-etcd=http://localhost:2380 \
-               --initial-cluster-token test-token \
-               --initial-advertise-peer-urls http://localhost:2380"
+             ETCDCTL_API=3 etcdctl snapshot save $REMOTE_PATH && \
+             ETCDCTL_API=3 etcdctl snapshot status $REMOTE_PATH"
 
-          echo "→ Downloading snapshot to runner..."
+          echo "::set-output name=remote_path::$REMOTE_PATH"
+
+      - name: Download etcd snapshot
+        shell: bash
+        run: |
+          SSH_USER="${{ secrets.SSH_USER }}"
+          PRIMARY=$(kubectl get nodes \
+            -l node-role.kubernetes.io/control-plane \
+            -o jsonpath='{.items[0].metadata.name}')
+          REMOTE_PATH="${{ steps.create_etcd_snapshot.outputs.remote_path }}"
+
+          echo "→ Fetching $REMOTE_PATH from $PRIMARY"
           scp -o StrictHostKeyChecking=no \
-            "$SSH_USER@$PRIMARY:${REMOTE_SNAPSHOT}" .
+            "$SSH_USER@$PRIMARY:$REMOTE_PATH" .
 
-          echo " Done: etcd-snapshot-${TIMESTAMP}.db"
+      - name: Verify snapshot locally
+        shell: bash
+        run: |
+          SNAPSHOT=$(ls etcd-snapshot-*.db | head -n1)
+          echo "→ Verifying $SNAPSHOT"
+
+          sudo apt-get update && sudo apt-get install -y etcd-client
+          export ETCDCTL_API=3
+
+          # Статус
+          etcdctl snapshot status "$SNAPSHOT" || {
+            echo "❌ status failed"; exit 1
+          }
+
+          # Восстановление в локальную папку /tmp/etcd-verify
+          rm -rf /tmp/etcd-verify
+          etcdctl snapshot restore "$SNAPSHOT" \
+            --data-dir /tmp/etcd-verify \
+            --name test-etcd \
+            --initial-cluster test-etcd=http://localhost:2380 \
+            --initial-cluster-token test-token \
+            --initial-advertise-peer-urls http://localhost:2380 || {
+            echo "❌ restore failed"; exit 1
+          }
+
+          echo "✅ Snapshot verification passed"
 
       - name: Upload etcd snapshot artifact
         uses: actions/upload-artifact@v4
