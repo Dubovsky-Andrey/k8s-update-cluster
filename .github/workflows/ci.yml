@@ -158,15 +158,17 @@ jobs:
             exit 1
           fi
 
+          # 2) Через SSH ставим etcd-client и делаем снапшот от имени root
           ssh -o StrictHostKeyChecking=no "$SSH_USER@$PRIMARY" \
             "sudo apt-get update && \
              sudo apt-get install -y etcd-client && \
-             export ETCDCTL_API=3 && \
-             etcdctl --endpoints=https://127.0.0.1:2379 \
-               --cacert=/etc/kubernetes/pki/etcd/ca.crt \
-               --cert=/etc/kubernetes/pki/etcd/server.crt \
-               --key=/etc/kubernetes/pki/etcd/server.key \
-               snapshot save /tmp/etcd-snapshot-\$(date +%Y%m%d%H%M%S).db"
+             sudo bash -lc '\
+               export ETCDCTL_API=3 && \
+               etcdctl --endpoints=https://127.0.0.1:2379 \
+                 --cacert=/etc/kubernetes/pki/etcd/ca.crt \
+                 --cert=/etc/kubernetes/pki/etcd/server.crt \
+                 --key=/etc/kubernetes/pki/etcd/server.key \
+                 snapshot save /tmp/etcd-snapshot-\$(date +%Y%m%d%H%M%S).db'"
 
       - name: Download etcd snapshot
         run: |
