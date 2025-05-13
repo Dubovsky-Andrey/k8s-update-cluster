@@ -14,8 +14,6 @@ jobs:
   check-k8s-version:
     name: Check latest Kubernetes version
     runs-on: [self-hosted-arm]
-    container:
-      image: alpine:latest
 
     steps:
       - name: Install curl and CA certificates
