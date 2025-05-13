@@ -138,37 +138,40 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-      - name: Backup & verify etcd snapshot remotely, then download
+      - name: Sync etcdctl version from control-plane
         shell: bash
         run: |
           SSH_USER="${{ secrets.SSH_USER }}"
           PRIMARY=$(kubectl get nodes \
             -l node-role.kubernetes.io/control-plane \
             -o jsonpath='{.items[0].metadata.name}')
-          TIMESTAMP=$(date +'%Y%m%d%H%M%S')
-          REMOTE_SNAPSHOT="/tmp/etcd-snapshot-${TIMESTAMP}.db"
 
-          # 1) Сбросим все предыдущие, на случай если там уже есть старый файл
-          ssh -o StrictHostKeyChecking=no "$SSH_USER@$PRIMARY" \
-            "sudo rm -f $REMOTE_SNAPSHOT"
+          # 1) Получаем версию etcdctl с ноды
+          ETCD_VER=$(ssh -o StrictHostKeyChecking=no "$SSH_USER@$PRIMARY" \
+            "etcdctl version | head -n1 | awk '{print \$3}'")
+          echo "→ Remote etcdctl version: $ETCD_VER"
+          if [[ -z "$ETCD_VER" ]]; then
+            echo "❌ Не удалось получить версию etcdctl" >&2
+            exit 1
+          fi
 
-          # 2) Создаём снапшот, проверяем и восстанавливаем его на удалённой ноде
-          ssh -o StrictHostKeyChecking=no "$SSH_USER@$PRIMARY" \
-            "sudo apt-get update && \
-             sudo apt-get install -y etcd-client && \
-             ETCDCTL_API=3 etcdctl snapshot save $REMOTE_SNAPSHOT && \
-             ETCDCTL_API=3 etcdctl snapshot status $REMOTE_SNAPSHOT && \
-             ETCDCTL_API=3 etcdctl snapshot restore $REMOTE_SNAPSHOT \
-               --data-dir /tmp/etcd-verify && \
-             sudo chmod 644 $REMOTE_SNAPSHOT"
+          # 2) Определяем архитектуру runner-а
+          ARCH=$(uname -m)
+          case "$ARCH" in
+            x86_64) PLATFORM="linux-amd64";;
+            aarch64|arm64) PLATFORM="linux-arm64";;
+            *) echo "Unsupported arch: $ARCH" >&2; exit 1;;
+          esac
 
-          echo "→ Snapshot created and verified on $PRIMARY: $REMOTE_SNAPSHOT"
+          # 3) Скачиваем и распаковываем нужный etcdctl
+          DOWNLOAD_URL="https://github.com/etcd-io/etcd/releases/download/v${ETCD_VER}/etcd-v${ETCD_VER}-${PLATFORM}.tar.gz"
+          echo "→ Downloading etcdctl from $DOWNLOAD_URL"
+          curl -sfL "$DOWNLOAD_URL" -o etcd-${ETCD_VER}.tgz
+          tar -xzf etcd-${ETCD_VER}.tgz -C /tmp
+          sudo mv /tmp/etcd-v${ETCD_VER}-${PLATFORM}/etcdctl /usr/local/bin/etcdctl
+          sudo chmod +x /usr/local/bin/etcdctl
 
-          # 3) Скачиваем уже проверенный файл через SCP
-          scp -o StrictHostKeyChecking=no \
-            "$SSH_USER@$PRIMARY:$REMOTE_SNAPSHOT" .
-
-          echo "✅ Fetched etcd-snapshot-${TIMESTAMP}.db"
+          echo "✅ etcdctl v${ETCD_VER} installed on runner"
 
       - name: Verify snapshot locally
         shell: bash
