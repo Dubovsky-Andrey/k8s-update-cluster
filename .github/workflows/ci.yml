@@ -16,10 +16,6 @@ jobs:
     runs-on: [self-hosted-arm]
 
     steps:
-      - name: Install curl and CA certificates
-        run: |
-          apk add --no-cache curl ca-certificates
-
       - name: Fetch latest Kubernetes stable release
         id: fetch_k8s
         run: |
