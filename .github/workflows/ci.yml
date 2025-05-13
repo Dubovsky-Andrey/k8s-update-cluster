@@ -170,11 +170,11 @@ jobs:
                ETCDCTL_KEY=/etc/kubernetes/pki/etcd/server.key \
                etcdctl snapshot save $REMOTE_SNAPSHOT'"
 
-          echo "→ Downloading snapshot to runner"
-          scp -o StrictHostKeyChecking=no \
-            "$SSH_USER@$PRIMARY:$REMOTE_SNAPSHOT" .
+          echo "→ Downloading snapshot via sudo cat"
+          ssh -o StrictHostKeyChecking=no "$SSH_USER@$PRIMARY" \
+            "sudo cat $REMOTE_SNAPSHOT" > "$LOCAL_FILE"
 
-          echo " Fetched $(basename $REMOTE_SNAPSHOT)"
+          echo " Snapshot saved locally as $LOCAL_FILE"
 
       - name: Download etcd snapshot
         shell: bash
