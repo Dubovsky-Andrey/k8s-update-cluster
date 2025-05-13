@@ -305,6 +305,24 @@ jobs:
           NODE_LIST="${{ needs.check-upgrade.outputs.node_list }}"
           echo "→ Nodes to upgrade: $NODE_LIST"
 
+      - name: Dry-run show upgrade commands
+        shell: bash
+        run: |
+          NODE_LIST="${{ needs.check-upgrade.outputs.node_list }}"
+          DESIRED="${{ needs.check-upgrade.outputs.desired }}"
+          echo "→ Nodes to upgrade: $NODE_LIST"
+          for NODE in $NODE_LIST; do
+            echo "---- Dry run for $NODE ----"
+            echo "ssh ${{ secrets.SSH_USER }}@$NODE sudo kubectl drain $NODE --ignore-daemonsets --delete-emptydir-data --dry-run=client"
+            echo "ssh ${{ secrets.SSH_USER }}@$NODE sudo apt-get update -y"
+            echo "ssh ${{ secrets.SSH_USER }}@$NODE sudo apt-get install -y kubeadm=${DESIRED}-00"
+            echo "ssh ${{ secrets.SSH_USER }}@$NODE sudo kubeadm upgrade node --dry-run"
+            echo "ssh ${{ secrets.SSH_USER }}@$NODE sudo apt-get install -y kubelet=${DESIRED}-00 kubectl=${DESIRED}-00"
+            echo "ssh ${{ secrets.SSH_USER }}@$NODE sudo systemctl restart kubelet"
+            echo "ssh ${{ secrets.SSH_USER }}@$NODE sudo kubectl uncordon $NODE"
+            echo
+          done
+
   #     - name: Upgrade each node one by one
   #       run: |
   #         set -euo pipefail
