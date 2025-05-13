@@ -138,48 +138,37 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-      - name: Backup etcd snapshot (no here-doc, sudo cat)
+      - name: Backup & verify etcd snapshot remotely, then download
         shell: bash
         run: |
-          # 1) Переменные
           SSH_USER="${{ secrets.SSH_USER }}"
           PRIMARY=$(kubectl get nodes \
             -l node-role.kubernetes.io/control-plane \
             -o jsonpath='{.items[0].metadata.name}')
           TIMESTAMP=$(date +'%Y%m%d%H%M%S')
           REMOTE_SNAPSHOT="/tmp/etcd-snapshot-${TIMESTAMP}.db"
-          LOCAL_FILE="etcd-snapshot-${TIMESTAMP}.db"
 
-          # 2) Sanity checks
-          if [[ -z "$SSH_USER" ]]; then
-            echo " SSH_USER not set" >&2
-            exit 1
-          fi
-          if [[ -z "$PRIMARY" ]]; then
-            echo " control-plane node not found" >&2
-            exit 1
-          fi
-
-          # 3) Создаём снапшот на удалённой ноде
-          echo "→ Creating snapshot on $PRIMARY"
+          # 1) Сбросим все предыдущие, на случай если там уже есть старый файл
           ssh -o StrictHostKeyChecking=no "$SSH_USER@$PRIMARY" \
-            "sudo apt-get update && sudo apt-get install -y etcd-client && \
-             sudo sh -lc '\
-               ETCDCTL_API=3 \
-               ETCDCTL_ENDPOINTS=https://127.0.0.1:2379 \
-               ETCDCTL_CACERT=/etc/kubernetes/pki/etcd/ca.crt \
-               ETCDCTL_CERT=/etc/kubernetes/pki/etcd/server.crt \
-               ETCDCTL_KEY=/etc/kubernetes/pki/etcd/server.key \
-               etcdctl snapshot save $REMOTE_SNAPSHOT'"
+            "sudo rm -f $REMOTE_SNAPSHOT"
 
-          echo "→ Snapshot saved at $REMOTE_SNAPSHOT"
-
-          # 4) Загружаем файл через sudo cat (обход прав)
-          echo "→ Downloading snapshot via sudo cat to $LOCAL_FILE"
+          # 2) Создаём снапшот, проверяем и восстанавливаем его на удалённой ноде
           ssh -o StrictHostKeyChecking=no "$SSH_USER@$PRIMARY" \
-            "sudo cat $REMOTE_SNAPSHOT" > "$LOCAL_FILE"
+            "sudo apt-get update && \
+             sudo apt-get install -y etcd-client && \
+             ETCDCTL_API=3 etcdctl snapshot save $REMOTE_SNAPSHOT && \
+             ETCDCTL_API=3 etcdctl snapshot status $REMOTE_SNAPSHOT && \
+             ETCDCTL_API=3 etcdctl snapshot restore $REMOTE_SNAPSHOT \
+               --data-dir /tmp/etcd-verify && \
+             sudo chmod 644 $REMOTE_SNAPSHOT"
 
-          echo " Snapshot local file: $LOCAL_FILE"
+          echo "→ Snapshot created and verified on $PRIMARY: $REMOTE_SNAPSHOT"
+
+          # 3) Скачиваем уже проверенный файл через SCP
+          scp -o StrictHostKeyChecking=no \
+            "$SSH_USER@$PRIMARY:$REMOTE_SNAPSHOT" .
+
+          echo "✅ Fetched etcd-snapshot-${TIMESTAMP}.db"
 
       - name: Verify snapshot locally
         shell: bash
@@ -192,7 +181,7 @@ jobs:
 
           # Статус
           etcdctl snapshot status "$SNAPSHOT" || {
-            echo "❌ status failed"; exit 1
+            echo " status failed"; exit 1
           }
 
           # Восстановление в локальную папку /tmp/etcd-verify
@@ -203,10 +192,10 @@ jobs:
             --initial-cluster test-etcd=http://localhost:2380 \
             --initial-cluster-token test-token \
             --initial-advertise-peer-urls http://localhost:2380 || {
-            echo "❌ restore failed"; exit 1
+            echo " restore failed"; exit 1
           }
 
-          echo "✅ Snapshot verification passed"
+          echo " Snapshot verification passed"
 
       - name: Upload etcd snapshot artifact
         uses: actions/upload-artifact@v4
