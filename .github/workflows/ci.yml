@@ -141,27 +141,26 @@ jobs:
       - name: Snapshot etcd on primary control-plane
         shell: bash
         run: |
-          # Забираем SSH-юзера из секрета
+          # 1) Проверяем SSH_USER
           SSH_USER="${{ secrets.SSH_USER }}"
           if [[ -z "$SSH_USER" ]]; then
-            echo " Ошибка: секрет SSH_USER не задан или пуст. Зайдите в Settings → Secrets и создайте SSH_USER."
+            echo " Ошибка: секрет SSH_USER пуст или не задан"
             exit 1
           fi
 
-          # Берём первую control-plane ноду
+          # 2) Берём первую control-plane ноду
           PRIMARY=$(kubectl get nodes \
             -l node-role.kubernetes.io/control-plane \
             -o jsonpath='{.items[0].metadata.name}')
           echo "→ Primary node: $PRIMARY"
           if [[ -z "$PRIMARY" ]]; then
-            echo " Ни одной control-plane ноды не найдено"
+            echo " Control-plane нода не найдена"
             exit 1
           fi
 
-          # Делаем снапшот через her­e-doc
-          ssh -o StrictHostKeyChecking=no "$SSH_USER@$PRIMARY" << 'EOF'
-          sudo kubeadm etcd snapshot save /tmp/etcd-snapshot-$(date +'%Y%m%d%H%M%S').db
-          EOF
+          # 3) Делаем снапшот командой в одну строку — никаких here-doc’ов
+          ssh -o StrictHostKeyChecking=no "$SSH_USER@$PRIMARY" \
+            "sudo kubeadm etcd snapshot save /tmp/etcd-snapshot-$(date +'%Y%m%d%H%M%S').db"
 
       - name: Download etcd snapshot
         run: |
