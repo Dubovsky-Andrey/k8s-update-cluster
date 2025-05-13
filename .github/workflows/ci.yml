@@ -13,7 +13,7 @@ permissions:
 jobs:
   check-k8s-version:
     name: Check latest Kubernetes version
-    runs-on: ubuntu-latest
+    runs-on: alpine:latest
 
     steps:
       - name: Fetch latest Kubernetes stable release
