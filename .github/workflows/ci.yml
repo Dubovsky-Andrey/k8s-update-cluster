@@ -150,10 +150,10 @@ jobs:
 
           # sanity checks
           if [[ -z "$SSH_USER" ]]; then
-            echo "❌ SSH_USER не задан"; exit 1
+            echo " SSH_USER не задан"; exit 1
           fi
           if [[ -z "$PRIMARY" ]]; then
-            echo "❌ Control-plane нода не найдена"; exit 1
+            echo " Control-plane нода не найдена"; exit 1
           fi
 
           echo "→ Creating etcd snapshot on $PRIMARY..."
@@ -167,11 +167,12 @@ jobs:
                --key=/etc/kubernetes/pki/etcd/server.key \
                snapshot save /tmp/etcd-snapshot-${TIMESTAMP}.db'"
 
-          echo "→ Downloading snapshot to runner..."
-          scp -o StrictHostKeyChecking=no \
-            "$SSH_USER@$PRIMARY":/tmp/etcd-snapshot-${TIMESTAMP}.db .
+          echo "→ Downloading snapshot via sudo cat..."
+          ssh -o StrictHostKeyChecking=no "$SSH_USER@$PRIMARY" \
+            "sudo cat /tmp/etcd-snapshot-${TIMESTAMP}.db" \
+            > etcd-snapshot-${TIMESTAMP}.db
 
-          echo " Snapshot etcd-snapshot-${TIMESTAMP}.db downloaded"
+          echo " Snapshot downloaded: etcd-snapshot-${TIMESTAMP}.db"
 
       - name: Verify etcd snapshot
         run: |
