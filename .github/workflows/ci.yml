@@ -131,11 +131,25 @@ jobs:
           echo "KUBECONFIG=$HOME/kubeconfig" >> $GITHUB_ENV
 
       - name: Snapshot etcd on primary control-plane
+        shell: bash
         run: |
+          echo "→ Проверяем, что файл есть:"
+          ls -lh k8s-upgrade-config.yaml || { echo " k8s-upgrade-config.yaml не найден"; exit 1; }
+
+          echo "→ Показываем первые строки конфига:"
+          head -n 20 k8s-upgrade-config.yaml
+
           PRIMARY=$(yq -r '.nodes[0]' k8s-upgrade-config.yaml)
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@$PRIMARY << 'EOF'
-            sudo kubeadm etcd snapshot save /tmp/etcd-snapshot-$(date +'%Y%m%d%H%M%S').db
-          EOF
+          echo "→ Primary node: [$PRIMARY]"
+
+          if [[ -z "$PRIMARY" || "$PRIMARY" == "null" ]]; then
+            echo " В конфиге нет .nodes[0], проверьте ключи и порядок."
+            exit 1
+          fi
+
+          ssh -o StrictHostKeyChecking=no "${{ secrets.SSH_USER }}@$PRIMARY" \
+            "sudo kubeadm etcd snapshot save /tmp/etcd-snapshot-$(date +'%Y%m%d%H%M%S').db"
+
       - name: Download etcd snapshot
         run: |
           PRIMARY=$(yq -r '.nodes[0]' k8s-upgrade-config.yaml)
