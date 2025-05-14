@@ -328,7 +328,7 @@ jobs:
           NODE_LIST="${{ needs.check-upgrade.outputs.node_list }}"
           for NODE in $NODE_LIST; do
             ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@$NODE \
-              "sudo apt-get update -y"
+              echo "ssh ${{ secrets.SSH_USER }}@$NODE sudo apt-get update -y"
           done
   #     - name: Upgrade each node one by one
   #       run: |
