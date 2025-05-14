@@ -322,6 +322,15 @@ jobs:
             echo
           done
 
+      - name: Upgrade packages
+        run: |
+          set -euo pipefail
+          for NODE in ${{ steps.load-nodes.outputs.nodes }}; do
+            ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@$NODE << 'EOF'
+              sudo apt-get update -y && sudo apt-get upgrade -y
+            EOF
+          done
+
   #     - name: Upgrade each node one by one
   #       run: |
   #         set -euo pipefail
