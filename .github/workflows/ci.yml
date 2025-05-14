@@ -29,8 +29,10 @@ jobs:
           echo "- Latest stable release: ${{ steps.fetch_k8s.outputs.k8s_latest }}" >> $GITHUB_STEP_SUMMARY
 
   check-upgrade:
+    name: Check Upgrade
     runs-on: [self-hosted-arm]
-
+    needs:
+      - check-k8s-version
     outputs:
       node_list: ${{ steps.list-names.outputs.node_list }}
       need_upgrade: ${{ steps.check.outputs.need_upgrade }}
@@ -128,6 +130,8 @@ jobs:
 
   backup-etcd:
     name: Backup etcd Snapshot
+    needs:
+      - check-k8s-version
     runs-on: [self-hosted-arm]
     steps:
       - name: Checkout repository
