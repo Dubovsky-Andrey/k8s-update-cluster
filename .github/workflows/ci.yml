@@ -275,6 +275,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Update and upgrade
+        run: |
+          chmod +x scripts/update_packages.sh
+          scripts/update_packages.sh
+
       - name: Install dependencies
         run: |
           sudo apt-get update -y
