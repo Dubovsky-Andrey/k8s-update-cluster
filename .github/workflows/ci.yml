@@ -34,6 +34,7 @@ jobs:
     needs:
       - check-k8s-version
     outputs:
+      desired: ${{ steps.cfg.outputs.desired }}
       node_list: ${{ steps.list-names.outputs.node_list }}
       need_upgrade: ${{ steps.check.outputs.need_upgrade }}
       nodes_checked: ${{ steps.list.outputs.count }}
