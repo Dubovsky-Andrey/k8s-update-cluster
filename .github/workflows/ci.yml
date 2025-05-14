@@ -311,7 +311,7 @@ jobs:
           # убираем ведущий "v"
           VERSION="${DESIRED#v}"
           echo "→ Dry run for version: $VERSION"
-          echo "-  Upgrade needed to ${{ steps.cfg.outputs.desired }}"
+          echo "-  Upgrade needed to ${{ needs.check-upgrade.outputs.desired }}" >> $GITHUB_STEP_SUMMARY
           for NODE in $NODE_LIST; do
             echo "---- $NODE ----"
             echo "ssh ${{ secrets.SSH_USER }}@$NODE sudo kubectl drain $NODE --ignore-daemonsets --delete-emptydir-data --dry-run=client"
