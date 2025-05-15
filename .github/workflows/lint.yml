@@ -8,7 +8,7 @@ on:
 jobs:
   lint-no-cyrillic-emoji:
     name: Linting ckeck
-    runs-on: ubuntu-latest
+    runs-on: ghcr.io/dubovsky-andrey/k8s-ubuntu:latest
 
     steps:
       - name: Checkout code
@@ -16,25 +16,31 @@ jobs:
 
       - name: Check to cyrillic
         run: |
-          # Ищем все вхождения кириллицы
           MATCHES=$(grep -RInP '\p{Cyrillic}' . || true)
           if [ -n "$MATCHES" ]; then
-            echo "::error::Найдены русские буквы (Кириллица) в следующих строках:"
+            echo "::error::Found Cyrillic in the following lines:"
             echo "$MATCHES"
             exit 1
           else
-            echo "Кириллица не найдена"
+            echo "Cyrillic not found"
           fi
 
       - name: Check to emodji
         run: |
-          # Диапазоны: Dingbats (галочки/кресты) и основные эмодзи
-          EMOJI_PATTERN='[\x{2700}-\x{27BF}\x{1F300}-\x{1F6FF}]'
-          MATCHES=$(grep -RInP "$EMOJI_PATTERN" . || true)
-          if [ -n "$MATCHES" ]; then
-            echo "::error::Найдены эмодзи или символы галочек/крестов в следующих строках:"
-            echo "$MATCHES"
+          # 1) Полный Unicode-блок эмодзи (All emoji/codepoints ChatGPT может вставлять)
+          EMOJI='\p{Extended_Pictographic}'
+
+          # 2) Простые текстовые смайлы, например :) ;-P :D
+          EMOTICON='[:;=8][\-~^]?[)(DPp]'
+
+          # Объединяем в один паттерн
+          PATTERN="($EMOJI|$EMOTICON)"
+
+          MATCH=$(grep -RInP "$PATTERN" . || true)
+          if [ -n "$MATCH" ]; then
+            echo "::error::Найдены эмодзи или смайлы в следующих строках:"
+            echo "$MATCH"
             exit 1
           else
-            echo "Эмодзи/символы галочек-крестов не найдены"
+            echo "✔ Эмодзи и смайлы не найдены"
           fi
