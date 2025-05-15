@@ -11,35 +11,38 @@ start_dir = sys.argv[1]
 if not os.path.isdir(start_dir):
     print(f"Error: '{start_dir}' is not a directory or does not exist.")
     sys.exit(2)
-print("Scanning directory:", start_dir)
 
 cyr_pattern      = regex.compile(r'\p{Cyrillic}')
 emoji_pattern    = regex.compile(r'\p{Extended_Pictographic}')
 emoticon_pattern = regex.compile(r'[:;=8][\-~^]?[)(DPp]')
 
-errors = []
+found = False
+
 for root, dirs, files in os.walk(start_dir):
     for name in files:
         path = os.path.join(root, name)
+        rel = os.path.relpath(path, start_dir)
 
-        # Проверка имени файла
+        # Сheck file name
         if cyr_pattern.search(name):
-            errors.append(f"{path}  ::warning ::# filename contains Cyrillic")
+            print(f"::warning file={rel}::filename contains Cyrillic")
+            found = True
 
+        # Check content
         try:
             with open(path, encoding='utf-8', errors='ignore') as f:
                 for num, line in enumerate(f, 1):
                     if (cyr_pattern.search(line)
                         or emoji_pattern.search(line)
                         or emoticon_pattern.search(line)):
-                        errors.append(f"{path}:{num}:{line.strip()}")
+                        msg = line.strip().replace('%', '%%')
+                        print(f"::warning file={rel},line={num}::{msg}")
+                        found = True
         except OSError:
             continue
 
-if errors:
-    print("Found Cyrillic or emoji in:")
-    print("\n".join(errors))
+if found:
     sys.exit(1)
 else:
-    print("✔ No Cyrillic or emoji found")
+    print(" No Cyrillic or emoji found")
     sys.exit(0)
