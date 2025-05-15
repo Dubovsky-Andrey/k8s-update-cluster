@@ -42,95 +42,95 @@ jobs:
       need_upgrade: ${{ steps.check.outputs.need_upgrade }}
       nodes_checked: ${{ steps.list.outputs.count }}
 
-  #   steps:
-  #     - name: Checkout repository
-  #       uses: actions/checkout@v4
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-  #     - name: Install dependencies
-  #       run: |
-  #         # Install jq for JSON processing
-  #         sudo apt-get update -y
-  #         sudo apt-get install -y jq
+      - name: Install dependencies
+        run: |
+          # Install jq for JSON processing
+          sudo apt-get update -y
+          sudo apt-get install -y jq
 
-  #         # Install yq for YAML parsing
-  #         YQ_VER="v4.44.1"
-  #         ARCH=$(uname -m)
-  #         if [ "$ARCH" = "x86_64" ]; then
-  #           YQ_ARCH="amd64"
-  #         else
-  #           YQ_ARCH="arm64"
-  #         fi
-  #         curl -L "https://github.com/mikefarah/yq/releases/download/${YQ_VER}/yq_linux_${YQ_ARCH}" -o /tmp/yq
-  #         sudo install -m 0755 /tmp/yq /usr/local/bin/yq
+          # Install yq for YAML parsing
+          YQ_VER="v4.44.1"
+          ARCH=$(uname -m)
+          if [ "$ARCH" = "x86_64" ]; then
+            YQ_ARCH="amd64"
+          else
+            YQ_ARCH="arm64"
+          fi
+          curl -L "https://github.com/mikefarah/yq/releases/download/${YQ_VER}/yq_linux_${YQ_ARCH}" -o /tmp/yq
+          sudo install -m 0755 /tmp/yq /usr/local/bin/yq
 
-  #         # Install kubectl CLI
-  #         K_VER=$(curl -sSL https://dl.k8s.io/release/stable.txt)
-  #         curl -sSL "https://dl.k8s.io/release/${K_VER}/bin/linux/${YQ_ARCH}/kubectl" -o /tmp/kubectl
-  #         sudo install -m 0755 /tmp/kubectl /usr/local/bin/kubectl
+          # Install kubectl CLI
+          K_VER=$(curl -sSL https://dl.k8s.io/release/stable.txt)
+          curl -sSL "https://dl.k8s.io/release/${K_VER}/bin/linux/${YQ_ARCH}/kubectl" -o /tmp/kubectl
+          sudo install -m 0755 /tmp/kubectl /usr/local/bin/kubectl
 
-  #     - name: Restore kubeconfig
-  #       run: |
-  #         # Decode admin kubeconfig from secret
-  #         echo "${{ secrets.ADMIN_KUBECONFIG_B64 }}" | base64 -d > $HOME/kubeconfig
-  #         chmod 600 $HOME/kubeconfig
-  #         # Export for all subsequent steps
-  #         echo "KUBECONFIG=$HOME/kubeconfig" >> $GITHUB_ENV
+      - name: Restore kubeconfig
+        run: |
+          # Decode admin kubeconfig from secret
+          echo "${{ secrets.ADMIN_KUBECONFIG_B64 }}" | base64 -d > $HOME/kubeconfig
+          chmod 600 $HOME/kubeconfig
+          # Export for all subsequent steps
+          echo "KUBECONFIG=$HOME/kubeconfig" >> $GITHUB_ENV
 
-  #     - name: Load desired version and label selector
-  #       id: cfg
-  #       run: |
-  #         DESIRED=$(yq '.desiredVersion' k8s-upgrade-config.yaml)
-  #         SELECTOR=$(yq -r '.labelSelector // ""' k8s-upgrade-config.yaml)
-  #         echo "desired=$DESIRED" >> "$GITHUB_OUTPUT"
-  #         echo "selector=$SELECTOR" >> "$GITHUB_OUTPUT"
+      - name: Load desired version and label selector
+        id: cfg
+        run: |
+          DESIRED=$(yq '.desiredVersion' k8s-upgrade-config.yaml)
+          SELECTOR=$(yq -r '.labelSelector // ""' k8s-upgrade-config.yaml)
+          echo "desired=$DESIRED" >> "$GITHUB_OUTPUT"
+          echo "selector=$SELECTOR" >> "$GITHUB_OUTPUT"
 
-  #     - id: list
-  #       name: Get list of nodes
-  #       run: |
-  #         SEL="${{ steps.cfg.outputs.selector }}"
-  #         if [ -n "$SEL" ]; then
-  #           kubectl get nodes -l "$SEL" -o json > nodes.json
-  #         else
-  #           kubectl get nodes -o json > nodes.json
-  #         fi
-  #         jq -r '.items[].metadata.name' nodes.json > /tmp/nodes.lst
-  #         echo "count=$(wc -l < /tmp/nodes.lst)" >> $GITHUB_OUTPUT
+      - id: list
+        name: Get list of nodes
+        run: |
+          SEL="${{ steps.cfg.outputs.selector }}"
+          if [ -n "$SEL" ]; then
+            kubectl get nodes -l "$SEL" -o json > nodes.json
+          else
+            kubectl get nodes -o json > nodes.json
+          fi
+          jq -r '.items[].metadata.name' nodes.json > /tmp/nodes.lst
+          echo "count=$(wc -l < /tmp/nodes.lst)" >> $GITHUB_OUTPUT
 
-  #     - id: list-names
-  #       name: Собираем имена нод в строку
-  #       run: |
-  #         # Читаем из /tmp/nodes.lst и делаем из них одну строку через пробел
-  #         NODE_LIST=$(paste -sd' ' /tmp/nodes.lst)
-  #         echo "→ Nodes: $NODE_LIST"
-  #         # Пробрасываем в step-output
-  #         echo "node_list=$NODE_LIST" >> $GITHUB_OUTPUT
+      - id: list-names
+        name: Собираем имена нод в строку
+        run: |
+          # Читаем из /tmp/nodes.lst и делаем из них одну строку через пробел
+          NODE_LIST=$(paste -sd' ' /tmp/nodes.lst)
+          echo "→ Nodes: $NODE_LIST"
+          # Пробрасываем в step-output
+          echo "node_list=$NODE_LIST" >> $GITHUB_OUTPUT
 
-  #     - id: check
-  #       name: Compare kubelet versions
-  #       run: |
-  #         DESIRED="${{ steps.cfg.outputs.desired }}"
-  #         NEED=0
-  #         while read -r NODE; do
-  #           CURRENT=$(kubectl get node "$NODE" -o jsonpath='{.status.nodeInfo.kubeletVersion}')
-  #           printf "Node %-20s : current=%s desired=%s\n" "$NODE" "$CURRENT" "$DESIRED"
-  #           if [ "$CURRENT" != "$DESIRED" ]; then
-  #             echo "::warning ::$NODE requires upgrade to $DESIRED"
-  #             NEED=1
-  #           fi
-  #         done < /tmp/nodes.lst
-  #         echo "need_upgrade=$NEED" >> $GITHUB_OUTPUT
+      - id: check
+        name: Compare kubelet versions
+        run: |
+          DESIRED="${{ steps.cfg.outputs.desired }}"
+          NEED=0
+          while read -r NODE; do
+            CURRENT=$(kubectl get node "$NODE" -o jsonpath='{.status.nodeInfo.kubeletVersion}')
+            printf "Node %-20s : current=%s desired=%s\n" "$NODE" "$CURRENT" "$DESIRED"
+            if [ "$CURRENT" != "$DESIRED" ]; then
+              echo "::warning ::$NODE requires upgrade to $DESIRED"
+              NEED=1
+            fi
+          done < /tmp/nodes.lst
+          echo "need_upgrade=$NEED" >> $GITHUB_OUTPUT
 
-  #     - name: Write summary
-  #       if: always()
-  #       run: |
-  #         echo "### Kubernetes upgrade report" >> $GITHUB_STEP_SUMMARY
-  #         echo "- Nodes checked: ${{ steps.list.outputs.count }}" >> $GITHUB_STEP_SUMMARY
-  #         if [ "${{ steps.check.outputs.need_upgrade }}" = "1" ]; then
-  #           echo "-  Upgrade needed = True" >> $GITHUB_STEP_SUMMARY
-  #           echo "-  Upgrade needed to ${{ steps.cfg.outputs.desired }}" >> $GITHUB_STEP_SUMMARY
-  #         else
-  #           echo "-  All nodes on version ${{ steps.cfg.outputs.desired }}" >> $GITHUB_STEP_SUMMARY
-  #         fi
+      - name: Write summary
+        if: always()
+        run: |
+          echo "### Kubernetes upgrade report" >> $GITHUB_STEP_SUMMARY
+          echo "- Nodes checked: ${{ steps.list.outputs.count }}" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.check.outputs.need_upgrade }}" = "1" ]; then
+            echo "-  Upgrade needed = True" >> $GITHUB_STEP_SUMMARY
+            echo "-  Upgrade needed to ${{ steps.cfg.outputs.desired }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "-  All nodes on version ${{ steps.cfg.outputs.desired }}" >> $GITHUB_STEP_SUMMARY
+          fi
 
   # backup-etcd:
   #   name: Backup etcd Snapshot
