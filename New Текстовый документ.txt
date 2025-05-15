@@ -1,1 +1,1 @@
-all in eng1 русс
+all in eng1

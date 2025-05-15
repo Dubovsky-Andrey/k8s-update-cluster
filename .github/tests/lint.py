@@ -11,6 +11,7 @@ start_dir = sys.argv[1]
 if not os.path.isdir(start_dir):
     print(f"Error: '{start_dir}' is not a directory or does not exist.")
     sys.exit(2)
+print("Scanning directory:", start_dir)
 
 cyr_pattern      = regex.compile(r'\p{Cyrillic}')
 emoji_pattern    = regex.compile(r'\p{Extended_Pictographic}')
