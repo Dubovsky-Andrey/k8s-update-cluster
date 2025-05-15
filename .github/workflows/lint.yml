@@ -5,42 +5,47 @@ on:
     branches: [dev]
   pull_request:
 
+env:
+  PYTHON_VERSION: '3.11'
+
 jobs:
   lint-no-cyrillic-emoji:
-    name: Linting ckeck
     runs-on: self-hosted-arm
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Check to cyrillic
-        run: |
-          MATCHES=$(grep -RInP '\p{Cyrillic}' . || true)
-          if [ -n "$MATCHES" ]; then
-            echo "::error::Found Cyrillic in the following lines:"
-            echo "$MATCHES"
-            exit 1
-          else
-            echo "Cyrillic not found"
-          fi
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Check to emodji
-        run: |
-          # 1) Полный Unicode-блок эмодзи (All emoji/codepoints ChatGPT может вставлять)
-          EMOJI='\p{Extended_Pictographic}'
+      - run: pip install --no-cache-dir regex
 
-          # 2) Простые текстовые смайлы, например :) ;-P :D
-          EMOTICON='[:;=8][\-~^]?[)(DPp]'
+      - run: |
+          python3 - << 'EOF'
+          import os, sys, regex
 
-          # Объединяем в один паттерн
-          PATTERN="($EMOJI|$EMOTICON)"
+          cyr_pattern = regex.compile(r'\p{Cyrillic}')
+          emoji_pattern = regex.compile(r'\p{Extended_Pictographic}')
+          emoticon_pattern = regex.compile(r'[:;=8][\-~^]?[)(DPp]')
 
-          MATCH=$(grep -RInP "$PATTERN" . || true)
-          if [ -n "$MATCH" ]; then
-            echo "::error::Найдены эмодзи или смайлы в следующих строках:"
-            echo "$MATCH"
-            exit 1
-          else
-            echo "✔ Эмодзи и смайлы не найдены"
-          fi
+          errors = []
+          for root, dirs, files in os.walk('.'):
+              for name in files:
+                  path = os.path.join(root, name)
+                  try:
+                      with open(path, encoding='utf-8', errors='ignore') as f:
+                          for num, line in enumerate(f, 1):
+                              if cyr_pattern.search(line) \
+                              or emoji_pattern.search(line) \
+                              or emoticon_pattern.search(line):
+                                  errors.append(f"{path}:{num}:{line.strip()}")
+                  except OSError:
+                      continue
+
+          if errors:
+              print("Found Cyrillic or emoji in:")
+              print("\n".join(errors))
+              sys.exit(1)
+          else:
+              print("✔ No Cyrillic or emoji found")
+          EOF
