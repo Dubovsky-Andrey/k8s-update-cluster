@@ -17,4 +17,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          python3 scripts\ci\lint_script.py
+          python3 scripts/cilint_script.py
