@@ -16,4 +16,4 @@ jobs:
       image: ghcr.io/dubovsky-andrey/k8s-ubuntu:latest
     steps:
       - uses: actions/checkout@v4
-      - run: python3 scripts/ci/lint.py ${{ github.workspace }}
+      - run: python3 scripts/ci/lint.py .
