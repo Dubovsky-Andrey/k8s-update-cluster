@@ -26,5 +26,5 @@ if errors:
     print("\n".join(errors))
     sys.exit(1)
 else:
-    print("✔ No Cyrillic or emoji found")
+    print("No Cyrillic or emoji found")
     sys.exit(0)
