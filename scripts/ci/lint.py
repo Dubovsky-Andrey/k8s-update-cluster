@@ -24,7 +24,7 @@ for root, dirs, files in os.walk(start_dir):
 
         # Проверка имени файла
         if cyr_pattern.search(name):
-            errors.append(f"{path}  # filename contains Cyrillic")
+            errors.append(f"{path}  ::warning ::# filename contains Cyrillic")
 
         try:
             with open(path, encoding='utf-8', errors='ignore') as f:
