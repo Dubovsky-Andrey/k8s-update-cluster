@@ -31,16 +31,16 @@ jobs:
           echo "### Kubernetes version report" >> $GITHUB_STEP_SUMMARY
           echo "- Latest stable release: ${{ steps.fetch_k8s.outputs.k8s_latest }}" >> $GITHUB_STEP_SUMMARY
 
-   check-upgrade:
-     name: Check Upgrade
-     runs-on: [self-hosted-arm]
-     needs:
-       - check-k8s-version
-     outputs:
-       desired: ${{ steps.cfg.outputs.desired }}
-       node_list: ${{ steps.list-names.outputs.node_list }}
-       need_upgrade: ${{ steps.check.outputs.need_upgrade }}
-       nodes_checked: ${{ steps.list.outputs.count }}
+  check-upgrade:
+    name: Check Upgrade
+    runs-on: [self-hosted-arm]
+    needs:
+      - check-k8s-version
+    outputs:
+      desired: ${{ steps.cfg.outputs.desired }}
+      node_list: ${{ steps.list-names.outputs.node_list }}
+      need_upgrade: ${{ steps.check.outputs.need_upgrade }}
+      nodes_checked: ${{ steps.list.outputs.count }}
 
   #   steps:
   #     - name: Checkout repository
