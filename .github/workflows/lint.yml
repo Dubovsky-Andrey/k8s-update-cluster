@@ -23,7 +23,7 @@ jobs:
             echo "$MATCHES"
             exit 1
           else
-            echo "✔ Кириллица не найдена"
+            echo " Кириллица не найдена"
           fi
 
       - name: Check to emodji
@@ -36,5 +36,5 @@ jobs:
             echo "$MATCHES"
             exit 1
           else
-            echo "✔ Эмодзи/символы галочек-крестов не найдены"
+            echo " Эмодзи/символы галочек-крестов не найдены"
           fi
