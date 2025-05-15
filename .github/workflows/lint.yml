@@ -8,7 +8,7 @@ on:
 jobs:
   lint-no-cyrillic-emoji:
     name: Linting ckeck
-    runs-on: ghcr.io/dubovsky-andrey/k8s-ubuntu:latest
+    runs-on: ubuntu:latest
 
     steps:
       - name: Checkout code
