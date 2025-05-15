@@ -25,7 +25,7 @@ for root, dirs, files in os.walk(start_dir):
 
         # Сheck file name
         if cyr_pattern.search(name):
-            print(f"::warning file={rel}::filename contains Cyrillic")
+            print(f"::error file={rel}::filename contains Cyrillic")
             found = True
 
         # Check content
@@ -36,7 +36,7 @@ for root, dirs, files in os.walk(start_dir):
                         or emoji_pattern.search(line)
                         or emoticon_pattern.search(line)):
                         msg = line.strip().replace('%', '%%')
-                        print(f"::warning file={rel},line={num}::{msg}")
+                        print(f"::error file={rel},line={num}::{msg}")
                         found = True
         except OSError:
             continue
