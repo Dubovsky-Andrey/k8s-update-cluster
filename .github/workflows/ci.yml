@@ -27,7 +27,9 @@ jobs:
       - name: Fetch latest Kubernetes stable release
         id: fetch_k8s
         if: always()
-        run: scripts/ci/check_kubernetes_stable_version.sh
+        run: |
+          chmod 600 scripts/ci/check_kubernetes_stable_version.sh
+          scripts/ci/check_kubernetes_stable_version.sh
 
 
 
