@@ -43,7 +43,7 @@ for root, dirs, files in os.walk(start_dir):
 if found:
     sys.exit(1)
 else:
-    print(" No Cyrillic or emoji found")
+    print("::notice:: No Cyrillic or emoji found")
     sys.exit(0)
 
 
