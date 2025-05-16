@@ -16,22 +16,16 @@ jobs:
     runs-on: [self-hosted-arm]
     container:
       image: ghcr.io/dubovsky-andrey/k8s-ubuntu:latest
-
-
-
     steps:
-
       - name: Checkout repository
         uses: actions/checkout@v4
-      
+
       - name: Fetch latest Kubernetes stable release
         id: fetch_k8s
         if: always()
         run: |
-          chmod 600 scripts/ci/check_kubernetes_stable_version.sh
+          chmod +x scripts/ci/check_kubernetes_stable_version.sh
           scripts/ci/check_kubernetes_stable_version.sh
-
-
 
   check-upgrade:
     name: Check Upgrade
