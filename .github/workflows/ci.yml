@@ -99,10 +99,8 @@ jobs:
       - id: list-names
         name: Collecting node names into a string
         run: |
-          # Читаем из /tmp/nodes.lst и делаем из них одну строку через пробел
           NODE_LIST=$(paste -sd' ' /tmp/nodes.lst)
           echo "→ Nodes: $NODE_LIST"
-          # Пробрасываем в step-output
           echo "node_list=$NODE_LIST" >> $GITHUB_OUTPUT
 
       - id: check
@@ -222,12 +220,12 @@ jobs:
   #           -l node-role.kubernetes.io/control-plane \
   #           -o jsonpath='{.items[0].metadata.name}')
 
-  #         # 1) Находим файл на ноде
+  #         # Find the file on the node
   #         REMOTE_SNAPSHOT=$(ssh -o StrictHostKeyChecking=no "$SSH_USER@$PRIMARY" \
   #           "ls /tmp/etcd-snapshot-*.db | tail -n1")
   #         echo "→ Remote snapshot: $REMOTE_SNAPSHOT"
 
-  #         # 2) Скачиваем его через sudo cat (обход прав)
+  #         # 2) Download spapshot
   #         LOCAL_FILE=$(basename "$REMOTE_SNAPSHOT")
   #         ssh -o StrictHostKeyChecking=no "$SSH_USER@$PRIMARY" \
   #           "sudo cat $REMOTE_SNAPSHOT" > "$LOCAL_FILE"
@@ -242,7 +240,7 @@ jobs:
   #         sudo apt-get update && sudo apt-get install -y etcd-client
   #         export ETCDCTL_API=3
 
-  #         # Статус
+  #         # Status
   #         etcdctl snapshot status "$SNAPSHOT" || {
   #           echo " status failed"; exit 1
   #         }
