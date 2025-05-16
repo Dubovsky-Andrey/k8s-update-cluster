@@ -22,8 +22,7 @@ for root, dirs, files in os.walk(start_dir):
     for name in files:
         path = os.path.join(root, name)
         rel = os.path.relpath(path, start_dir)
-
-        # Сheck file name
+        
         if cyr_pattern.search(name):
             print(f"::error file={rel}::filename contains Cyrillic")
             found = True
@@ -46,3 +45,5 @@ if found:
 else:
     print(" No Cyrillic or emoji found")
     sys.exit(0)
+
+
