@@ -17,16 +17,19 @@ jobs:
     container:
       image: ghcr.io/dubovsky-andrey/k8s-ubuntu:latest
 
+
+
     steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
       - name: Fetch latest Kubernetes stable release
         id: fetch_k8s
+        if: always()
         run: scripts/ci/check_kubernetes_stable_version.sh
 
-      - name: Write version summary
-        if: always()
-        run: |
-          echo "### Kubernetes version report" >> $GITHUB_STEP_SUMMARY
-          echo "- Latest stable release: ${{ steps.fetch_k8s.outputs.k8s_latest }}" >> $GITHUB_STEP_SUMMARY
+
 
   check-upgrade:
     name: Check Upgrade
