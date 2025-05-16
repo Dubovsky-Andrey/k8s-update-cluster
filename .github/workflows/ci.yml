@@ -247,7 +247,7 @@ jobs:
   #           echo " status failed"; exit 1
   #         }
 
-  #         # Восстановление в локальную папку /tmp/etcd-verify
+  #         # Restore to local folder /tmp/etcd-verify
   #         rm -rf /tmp/etcd-verify
   #         etcdctl snapshot restore "$SNAPSHOT" \
   #           --data-dir /tmp/etcd-verify \
@@ -307,7 +307,7 @@ jobs:
   #     - name: Upgrade each node one by one
   #       shell: bash
   #       run: |
-  #         # Получаем строку имён из предыдущего job-а
+  #         # Get NODE list
   #         NODE_LIST="${{ needs.check-upgrade.outputs.node_list }}"
   #         echo "→ Nodes to upgrade: $NODE_LIST"
 
@@ -316,7 +316,7 @@ jobs:
   #       run: |
   #         NODE_LIST="${{ needs.check-upgrade.outputs.node_list }}"
   #         DESIRED="${{ needs.check-upgrade.outputs.desired }}"
-  #         # убираем ведущий "v"
+  #         # remove the leading "v"
   #         VERSION="${DESIRED#v}"
   #         echo "→ Dry run for version: $VERSION"
   #         echo "-  Upgrade needed to ${{ needs.check-upgrade.outputs.desired }}" >> $GITHUB_STEP_SUMMARY
