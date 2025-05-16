@@ -25,7 +25,7 @@ jobs:
         if: always()
         run: |
           chmod +x scripts/ci/check_kubernetes_stable_version.sh
-          scripts/ci/check_kubernetes_stable_version.sh
+          bash scripts/ci/check_kubernetes_stable_version.sh
 
   check-upgrade:
     name: Check Upgrade
