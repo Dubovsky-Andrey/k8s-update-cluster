@@ -212,7 +212,7 @@ jobs:
   #         sudo mv /tmp/etcd-v${ETCD_VER}-${PLATFORM}/etcdctl /usr/local/bin/etcdctl
   #         sudo chmod +x /usr/local/bin/etcdctl
 
-  #         echo "✅ etcdctl v${ETCD_VER} installed on runner"
+  #         echo " etcdctl v${ETCD_VER} installed on runner"
 
   #     - name: Fetch latest etcd snapshot from control-plane
   #       shell: bash
@@ -231,7 +231,7 @@ jobs:
   #         LOCAL_FILE=$(basename "$REMOTE_SNAPSHOT")
   #         ssh -o StrictHostKeyChecking=no "$SSH_USER@$PRIMARY" \
   #           "sudo cat $REMOTE_SNAPSHOT" > "$LOCAL_FILE"
-  #         echo "✅ Snapshot downloaded to runner as $LOCAL_FILE"
+  #         echo "Snapshot downloaded to runner as $LOCAL_FILE"
 
   #     - name: Verify snapshot locally
   #       shell: bash
