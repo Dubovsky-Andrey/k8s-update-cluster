@@ -2,7 +2,7 @@ name: Kubernetes Upgrade Check (dynamic nodes)
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   workflow_dispatch:
   schedule:
     - cron: "0 8 * * *"

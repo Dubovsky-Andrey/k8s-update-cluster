@@ -11,7 +11,7 @@ env:
 
 jobs:
   
-  lint-no-cyrillic-emoji:
+  lint-no-cyrillic-and-emoji:
     runs-on: self-hosted-arm
     container:
       image: ghcr.io/dubovsky-andrey/k8s-ubuntu:latest
