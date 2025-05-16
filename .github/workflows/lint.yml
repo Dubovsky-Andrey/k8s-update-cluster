@@ -10,10 +10,14 @@ env:
   PYTHON_VERSION: '3.11'
 
 jobs:
+  
   lint-no-cyrillic-emoji:
     runs-on: self-hosted-arm
     container:
       image: ghcr.io/dubovsky-andrey/k8s-ubuntu:latest
     steps:
-      - uses: actions/checkout@v4
-      - run: python3 scripts/ci/lint.py .
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Cyrillic/Emoji Linter
+        run: python3 scripts/ci/lint.py .
