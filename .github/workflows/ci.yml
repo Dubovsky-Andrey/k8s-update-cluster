@@ -190,7 +190,7 @@ jobs:
   #           "etcdctl version | head -n1 | awk '{print \$3}'")
   #         echo "→ Remote etcdctl version: $ETCD_VER"
   #         if [[ -z "$ETCD_VER" ]]; then
-  #           echo " [E]Не удалось получить версию] etcdctl" >&2
+  #           echo " Failed to get etcdctl version" >&2
   #           exit 1
   #         fi
 
